@@ -1,0 +1,8 @@
+{
+  "name": "Sugora",
+  "description": "A premium, modern, and ultra-secure communication platform built for the future.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

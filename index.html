@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO & Metadata -->
+    <title>Sugora | Next-Gen Premium &amp; Private Communication</title>
+    <meta name="description" content="Sugora is a modern, fast, and ultra-secure communication platform built with end-to-end decentralized keys, zero-latency cores, and fluid multi-device sync." />
+    <meta name="keywords" content="Sugora, secure messaging, encrypted chat, PWA communication, privacy messaging, decentralization, real-time sync" />
+    <meta name="author" content="Sugora Labs" />
+    
+    <!-- Open Graph (Facebook / LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sugora.io/" />
+    <meta property="og:title" content="Sugora | Next-Gen Premium &amp; Private Communication" />
+    <meta property="og:description" content="Experience hyper-fast and entirely private messaging. Sugora is a secure-by-default multi-device communication engine." />
+    <meta property="og:image" content="/logo.svg" />
+
+    <!-- Twitter Cards -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://sugora.io/" />
+    <meta property="twitter:title" content="Sugora | Next-Gen Premium &amp; Private Communication" />
+    <meta property="twitter:description" content="Experience hyper-fast and entirely private messaging. Sugora is a secure-by-default multi-device communication engine." />
+    <meta property="twitter:image" content="/logo.svg" />
+
+    <!-- Mobile App & PWA Configuration -->
+    <meta name="theme-color" content="#0d9488" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Sugora" />
+    
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+  </head>
+  <body class="bg-slate-50 text-slate-900 dark:bg-neutral-950 dark:text-neutral-50 transition-colors duration-300">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Register custom Service Worker for PWA compliance and offline support -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('[PWA] Service Worker registered with scope:', registration.scope);
+            })
+            .catch((error) => {
+              console.error('[PWA] Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

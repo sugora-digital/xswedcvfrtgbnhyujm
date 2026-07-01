@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Dark Mode / Premium Gradients -->
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#0d9488" />
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+    <linearGradient id="glowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#6366f1" stop-opacity="0.2" />
+    </linearGradient>
+    <filter id="premiumGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas for Icon/App Launcher -->
+  <rect width="512" height="512" rx="112" fill="#09090b" />
+
+  <!-- Abstract Interlocking Flow (Network Connection Nodes) -->
+  <g transform="translate(4, 4)">
+    <!-- Glow Background Shape -->
+    <path d="M 160,256 C 160,180 220,120 296,120 C 372,120 400,180 400,256 C 400,332 320,392 244,392 C 168,392 160,332 160,256 Z" 
+          fill="url(#glowGrad)" 
+          filter="url(#premiumGlow)" 
+          opacity="0.35" />
+
+    <!-- Left Primary Loop (Intuitive Flow) -->
+    <path d="M 140,256 C 140,165.4 213.4,92 304,92 C 340,92 372,104 400,128 C 360,160 310,180 270,220 C 220,270 200,330 200,380 C 164,352 140,306 140,256 Z" 
+          fill="url(#tealGrad)" />
+
+    <!-- Right Interlocking Loop (Secure Core) -->
+    <path d="M 372,256 C 372,346.6 298.6,420 208,420 C 180,420 150,410 120,392 C 160,360 210,340 250,300 C 300,250 320,190 320,140 C 352,170 372,210 372,256 Z" 
+          fill="url(#purpleGrad)" />
+
+    <!-- Inner Core Nexus (The Sugora Star/Node) -->
+    <circle cx="256" cy="256" r="28" fill="#ffffff" filter="url(#premiumGlow)" />
+    <circle cx="256" cy="256" r="14" fill="#2dd4bf" />
+  </g>
+</svg>
