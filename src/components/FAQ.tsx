@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, HelpCircle } from 'lucide-react';
+import { ChevronDown, HelpCircle, Sparkles, MessageSquare, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FAQItem } from '../types';
 
@@ -10,7 +10,7 @@ export default function FAQ() {
     {
       id: 'q1',
       question: 'Is Sugora really private? How do you monetize?',
-      answer: 'Yes, Sugora is completely secure. We operate on a dual-license model: the core communication protocol is 100% open-source, non-profit, and self-hosted. For enterprise workspaces, we offer premium high-performance node clustering, dedicated storage pinners, and customized hardware sandboxes. We will never sell ads or harvest chat metadata.'
+      answer: 'Yes, Sugora is completely private. We operate on a dual-license model: the core communication protocol is 100% open-source, non-profit, and self-hosted. For enterprise workspaces, we offer premium high-performance node clustering, dedicated storage pinners, and customized hardware sandboxes. We will never sell ads, harvest chat metadata, or compromise user secrets.'
     },
     {
       id: 'q2',
@@ -35,43 +35,61 @@ export default function FAQ() {
   ];
 
   return (
-    <section id="faq" className="py-20 md:py-28 bg-neutral-50 dark:bg-zinc-900/50 border-y border-neutral-200/50 dark:border-zinc-900/50 transition-colors duration-300">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    <section id="faq" className="py-24 bg-neutral-50 dark:bg-neutral-950 transition-colors duration-300 relative overflow-hidden border-t border-neutral-200/40 dark:border-neutral-800/40">
+      
+      {/* Dynamic lighting effects */}
+      <div className="absolute top-1/2 left-10 w-80 h-80 bg-blue-500/5 dark:bg-blue-600/5 blur-[120px] rounded-full" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 dark:bg-purple-600/5 blur-[140px] rounded-full" />
+
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 relative z-10">
         
         {/* Section Header */}
         <div className="text-center mb-16 space-y-4">
-          <span className="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-blue-600 dark:text-cyan-400 bg-blue-500/10 border border-blue-500/10 uppercase tracking-widest">
+            <HelpCircle className="h-4 w-4" />
             Common Inquiries
           </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-neutral-900 dark:text-white">
-            Frequently Asked <span className="brand-gradient-text">Questions</span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-neutral-900 dark:text-white leading-tight">
+            Frequently Asked <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">Questions</span>
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-zinc-400 font-medium">
-            Everything you need to know about Sugora's decentralized core and security standards.
+          <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium max-w-lg mx-auto leading-relaxed">
+            Everything you need to know about Sugora's decentralized core, security standards, and architectural design.
           </p>
         </div>
 
         {/* Accordion Group */}
-        <div className="space-y-4">
-          {faqItems.map((item) => {
+        <div className="space-y-4 text-left">
+          {faqItems.map((item, idx) => {
             const isOpen = openId === item.id;
             return (
-              <div
+              <motion.div
                 id={`faq-item-${item.id}`}
                 key={item.id}
-                className="rounded-2xl border border-neutral-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm hover:shadow transition-shadow duration-300"
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.05 }}
+                className={`rounded-3xl border transition-all duration-300 overflow-hidden ${
+                  isOpen 
+                    ? 'bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-800 shadow-xl' 
+                    : 'bg-white/40 dark:bg-neutral-900/10 border-neutral-200/60 dark:border-neutral-900/60 hover:bg-white dark:hover:bg-neutral-900/20'
+                }`}
               >
                 {/* Header button */}
                 <button
                   id={`faq-toggle-${item.id}`}
                   onClick={() => setOpenId(isOpen ? null : item.id)}
-                  className="w-full flex items-center justify-between p-5 text-left font-bold text-sm sm:text-base text-neutral-900 dark:text-white transition-colors hover:text-teal-600 dark:hover:text-teal-400 cursor-pointer"
+                  className="w-full flex items-center justify-between p-6 sm:p-7 text-left font-extrabold text-sm sm:text-base text-neutral-900 dark:text-white transition-colors hover:text-blue-600 dark:hover:text-cyan-400 cursor-pointer"
                 >
-                  <span className="flex items-center gap-3">
-                    <HelpCircle className="h-4.5 w-4.5 text-indigo-500 shrink-0" />
-                    {item.question}
+                  <span className="flex items-center gap-4">
+                    <div className={`p-2 rounded-xl shrink-0 ${isOpen ? 'bg-blue-500/10 text-blue-600 dark:text-cyan-400' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400'}`}>
+                      <HelpCircle className="h-4.5 w-4.5 shrink-0" />
+                    </div>
+                    <span>{item.question}</span>
                   </span>
-                  <ChevronDown className={`h-4 w-4 text-neutral-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-teal-500' : ''}`} />
+                  <div className={`h-8 w-8 rounded-full border border-neutral-200 dark:border-neutral-800/85 flex items-center justify-center text-neutral-400 shrink-0 transition-all ${isOpen ? 'rotate-180 bg-neutral-100 dark:bg-neutral-800 text-blue-500' : ''}`}>
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
                 </button>
 
                 {/* Animated Answer Body */}
@@ -83,13 +101,13 @@ export default function FAQ() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.25 }}
                     >
-                      <div className="px-5 pb-5 pt-1 text-xs sm:text-sm text-neutral-600 dark:text-zinc-400 leading-relaxed font-medium border-t border-neutral-100 dark:border-zinc-900">
+                      <div className="px-6 sm:px-7 pb-6 sm:pb-7 pt-1 text-xs sm:text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium border-t border-neutral-150 dark:border-neutral-800/80">
                         {item.answer}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
+              </motion.div>
             );
           })}
         </div>

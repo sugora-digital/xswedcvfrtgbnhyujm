@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="100%" height="100%">
+  <defs>
+    <!-- Brand Premium Gradients -->
+    <linearGradient id="textGradBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <linearGradient id="textGradPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="textGradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="textGradGlow" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.1" />
+    </linearGradient>
+    <filter id="textPremiumGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="15" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Logo Icon Group (Left Placed) -->
+  <g transform="translate(20, 10) scale(0.35)">
+    <!-- Base Glow Shadow -->
+    <circle cx="256" cy="256" r="180" fill="url(#textGradGlow)" filter="url(#textPremiumGlow)" opacity="0.4" />
+
+    <!-- Cyan Loop (Bottom Left Flow) -->
+    <path d="M 170,300 C 130,220 180,140 256,140 C 320,140 370,180 370,230 C 370,300 300,320 256,360 C 200,410 180,420 170,420 C 130,420 120,380 170,300 Z" 
+          fill="url(#textGradCyan)" opacity="0.95" />
+
+    <!-- Blue Wave (Top Right Flow) -->
+    <path d="M 342,212 C 382,292 332,372 256,372 C 192,372 142,332 142,282 C 142,212 212,192 256,152 C 312,102 332,92 342,92 C 382,92 392,132 342,212 Z" 
+          fill="url(#textGradBlue)" opacity="0.95" />
+
+    <!-- Purple Interlaced Core Connector -->
+    <path d="M 210,210 C 240,170 272,170 302,210 C 332,250 332,270 302,310 C 272,350 240,350 210,310 C 180,270 180,250 210,210 Z" 
+          fill="url(#textGradPurple)" />
+
+    <!-- Pure Core White Light Sparkle -->
+    <circle cx="256" cy="256" r="24" fill="#ffffff" filter="url(#textPremiumGlow)" />
+    <circle cx="256" cy="256" r="12" fill="#3b82f6" />
+  </g>
+
+  <!-- Typography "Sugora" in elegant display sans-serif style -->
+  <text x="210" y="125" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-size="84" font-weight="800" fill="#ffffff" letter-spacing="-2px">
+    Sugora
+  </text>
+
+  <!-- Slogan under Name -->
+  <text x="215" y="165" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="600" fill="#94a3b8" letter-spacing="4px">
+    NEXT-GEN INTELLIGENT COMMUNICATOR
+  </text>
+</svg>

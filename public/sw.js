@@ -59,10 +59,69 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse;
           }
           // If indexing, return standard index shell as a fallback
-          if (event.request.headers.get('accept').includes('text/html')) {
+          const acceptHeader = event.request.headers.get('accept');
+          if (acceptHeader && acceptHeader.includes('text/html')) {
             return caches.match('/');
           }
         });
       })
   );
 });
+
+// PWA Notification Handlers
+self.addEventListener('push', (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Sugora Chat', body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'Sugora';
+  const options = {
+    body: data.body || 'You have a new update',
+    icon: data.icon || '/logo.svg',
+    badge: '/logo.svg',
+    vibrate: [100, 50, 100],
+    data: data.data || { url: '/' },
+    actions: data.actions || []
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  // Custom action buttons handler
+  if (event.action === 'accept-call') {
+    // Handle incoming call accept
+    const callId = event.notification.data?.callId;
+    const urlToOpen = callId ? `/?action=accept-call&callId=${callId}` : '/';
+    event.waitUntil(focusOrCreateWindow(urlToOpen));
+    return;
+  } else if (event.action === 'decline-call') {
+    // Handle incoming call decline
+    return;
+  }
+
+  const urlToOpen = event.notification.data?.url || '/';
+  event.waitUntil(focusOrCreateWindow(urlToOpen));
+});
+
+function focusOrCreateWindow(url) {
+  return clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    for (let client of windowClients) {
+      if (client.url.includes(url) && 'focus' in client) {
+        return client.focus();
+      }
+    }
+    if (clients.openWindow) {
+      return clients.openWindow(url);
+    }
+  });
+}

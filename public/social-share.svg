@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="100%" height="100%">
+  <defs>
+    <!-- Dark Slate Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </radialGradient>
+
+    <!-- Brand Premium Gradients -->
+    <linearGradient id="shareGradBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+    <linearGradient id="shareGradPurple" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="shareGradCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="shareGradGlow" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.2" />
+    </linearGradient>
+    <filter id="shareGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="30" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+
+  <!-- Subtle Network Tech Grid Overlay -->
+  <g opacity="0.1">
+    <path d="M 0,100 L 1200,100 M 0,200 L 1200,200 M 0,300 L 1200,300 M 0,400 L 1200,400 M 0,500 L 1200,500" stroke="#334155" stroke-width="1" />
+    <path d="M 100,0 L 100,630 M 200,0 L 200,630 M 300,0 L 300,630 M 400,0 L 400,630 M 500,0 L 500,630 M 600,0 L 600,630 M 700,0 L 700,630 M 800,0 L 800,630 M 900,0 L 900,630 M 1000,0 L 1000,630 M 1100,0 L 1100,630" stroke="#334155" stroke-width="1" />
+    <circle cx="600" cy="315" r="450" fill="none" stroke="#334155" stroke-dasharray="10 15" stroke-width="1" />
+    <circle cx="600" cy="315" r="250" fill="none" stroke="#334155" stroke-dasharray="5 5" stroke-width="1.5" />
+  </g>
+
+  <!-- Giant Backdrop Glow Logo Behind Text -->
+  <g transform="translate(680, 115) scale(0.8)">
+    <circle cx="256" cy="256" r="180" fill="url(#shareGradGlow)" filter="url(#shareGlow)" opacity="0.4" />
+  </g>
+
+  <!-- Brand Content Group -->
+  <g transform="translate(100, 160)">
+    <!-- Badge -->
+    <rect width="280" height="34" rx="17" fill="#1e3a8a" stroke="#3b82f6" stroke-width="1.5" />
+    <circle cx="20" cy="17" r="5" fill="#2dd4bf" />
+    <text x="36" y="22" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="700" fill="#2dd4bf" letter-spacing="1.5px">SECURE DECENTRALIZED CORE</text>
+
+    <!-- Main Title -->
+    <text x="0" y="110" font-family="'Plus Jakarta Sans', 'Inter', sans-serif" font-size="80" font-weight="800" fill="#ffffff" letter-spacing="-2px">
+      Sugora
+    </text>
+
+    <!-- Subtitle / Hook -->
+    <text x="0" y="165" font-family="'Plus Jakarta Sans', sans-serif" font-size="26" font-weight="600" fill="#f8fafc" letter-spacing="-0.5px">
+      The Future of Private Communication
+    </text>
+
+    <!-- Description -->
+    <text x="0" y="215" font-family="'Plus Jakarta Sans', sans-serif" font-size="16" font-weight="400" fill="#94a3b8" leading-relaxed="1.5">
+      An ultra-premium intelligent communication suite with end-to-end encryption,
+    </text>
+    <text x="0" y="240" font-family="'Plus Jakarta Sans', sans-serif" font-size="16" font-weight="400" fill="#94a3b8" leading-relaxed="1.5">
+      integrated AI assistant, sharded sync mechanisms, and hardware-grade security.
+    </text>
+
+    <!-- Key Metrics / Footer details -->
+    <g transform="translate(0, 300)">
+      <text x="0" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#3b82f6" letter-spacing="2px">LATENCY // 4MS</text>
+      <text x="200" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#8b5cf6" letter-spacing="2px">ENCRYPTION // AES-GCM-256</text>
+      <text x="480" y="0" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#2dd4bf" letter-spacing="2px">DECENTRALIZED // TRUE</text>
+    </g>
+  </g>
+
+  <!-- Crisp Premium Foreground Logo Icon (Right-centered alignment) -->
+  <g transform="translate(730, 140) scale(0.7)">
+    <!-- Outer Glow background shadow -->
+    <circle cx="256" cy="256" r="180" fill="url(#shareGradGlow)" filter="url(#shareGlow)" opacity="0.25" />
+
+    <!-- Cyan Loop (Bottom Left Flow) -->
+    <path d="M 170,300 C 130,220 180,140 256,140 C 320,140 370,180 370,230 C 370,300 300,320 256,360 C 200,410 180,420 170,420 C 130,420 120,380 170,300 Z" 
+          fill="url(#shareGradCyan)" opacity="0.95" />
+
+    <!-- Blue Wave (Top Right Flow) -->
+    <path d="M 342,212 C 382,292 332,372 256,372 C 192,372 142,332 142,282 C 142,212 212,192 256,152 C 312,102 332,92 342,92 C 382,92 392,132 342,212 Z" 
+          fill="url(#shareGradBlue)" opacity="0.95" />
+
+    <!-- Purple Interlaced Core Connector -->
+    <path d="M 210,210 C 240,170 272,170 302,210 C 332,250 332,270 302,310 C 272,350 240,350 210,310 C 180,270 180,250 210,210 Z" 
+          fill="url(#shareGradPurple)" />
+
+    <!-- Core star nexus -->
+    <circle cx="256" cy="256" r="24" fill="#ffffff" filter="url(#shareGlow)" />
+    <circle cx="256" cy="256" r="12" fill="#3b82f6" />
+  </g>
+</svg>
