@@ -27,7 +27,10 @@ export default function CTA() {
       if (currentConfig.isConfigured) {
         // Attempt insert to mock/real Supabase table 'waitlist'
         console.log(`CTA: Inserting waitlist subscriber to Supabase: ${email}`);
-        await supabaseClient.from('waitlist').insert({ email, created_at: new Date().toISOString() });
+        const { error } = await supabaseClient.from('waitlist').insert({ email, created_at: new Date().toISOString() });
+        if (error) {
+          throw error;
+        }
       } else {
         // Fallback local persistence
         console.log(`CTA: Supabase not configured. Saving subscriber locally: ${email}`);

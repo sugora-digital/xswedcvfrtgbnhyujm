@@ -53,12 +53,12 @@ export default function Footer() {
                     <path d="M 372,256 C 372,346.6 298.6,420 208,420 C 180,420 150,410 120,392 C 160,360 210,340 250,300 C 300,250 320,190 320,140 C 352,170 372,210 372,256 Z" fill="url(#footerPurple)" />
                     <defs>
                       <linearGradient id="footerTeal" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#2dd4bf" />
-                        <stop offset="100%" stop-color="#0d9488" />
+                        <stop offset="0%" stopColor="#2dd4bf" />
+                        <stop offset="100%" stopColor="#0d9488" />
                       </linearGradient>
                       <linearGradient id="footerPurple" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#818cf8" />
-                        <stop offset="100%" stop-color="#4f46e5" />
+                        <stop offset="0%" stopColor="#818cf8" />
+                        <stop offset="100%" stopColor="#4f46e5" />
                       </linearGradient>
                     </defs>
                   </svg>
