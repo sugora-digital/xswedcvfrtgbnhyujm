@@ -269,8 +269,14 @@ export default function ChatPlaceholder() {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Trigger persistent cloud storage synchronization
-    chatStore.syncWithSupabase(currentUser.id);
+    // Trigger offline fast boot, then cloud sync
+    if (!chatStore.isLoaded) {
+      chatStore.loadFromIDB().then(() => {
+        chatStore.syncWithSupabase(currentUser.id);
+      });
+    } else {
+      chatStore.syncWithSupabase(currentUser.id);
+    }
 
     const syncStore = () => {
       setChatSettings(chatStore.getSettings());
@@ -1146,28 +1152,50 @@ export default function ChatPlaceholder() {
                     {filteredConversations.map((conv) => {
                       const recipient = conv.recipient;
                       if (!recipient) return null;
-
                       const isPinned = conv.pinned_by?.includes(currentUser?.id);
                       const isMuted = conv.muted_by?.includes(currentUser?.id);
                       const isOnline = chatStore.getPresence(recipient.id).status === 'online';
                       const isAway = chatStore.getPresence(recipient.id).status === 'away';
-
+                      
+                      const hasUnread = conv.unreadCount > 0;
+                      
                       return (
-                        <div
-                          key={conv.id}
-                          onClick={() => {
-                            setActiveConv(conv);
-                            chatStore.markAsRead(conv.id, currentUser.id);
-                          }}
-                          className={`group relative flex items-start gap-3 p-3 rounded-2xl cursor-pointer transition-all select-none ${
-                            activeConv?.id === conv.id
-                              ? 'bg-neutral-100/80 dark:bg-zinc-900 text-neutral-900 dark:text-white'
-                              : 'hover:bg-neutral-50/50 dark:hover:bg-zinc-900/30'
-                          }`}
-                        >
-                          {/* Avatar Container */}
-                          <div className="relative shrink-0">
-                            <div className="h-11 w-11 rounded-xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200/50 dark:border-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-sm">
+                        <div key={conv.id} className="relative overflow-hidden rounded-[24px] mb-1 group">
+                          {/* Background Swipe Actions */}
+                          <div className="absolute inset-y-0 right-0 flex items-center justify-end px-3 gap-2 w-full bg-neutral-100 dark:bg-zinc-900 rounded-[24px]">
+                            <button className="h-10 w-10 rounded-full bg-neutral-200 dark:bg-zinc-800 flex items-center justify-center text-neutral-500 hover:text-amber-500">
+                              <Archive className="h-4 w-4" />
+                            </button>
+                            <button className="h-10 w-10 rounded-full bg-neutral-200 dark:bg-zinc-800 flex items-center justify-center text-neutral-500 hover:text-teal-500">
+                              <VolumeX className="h-4 w-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); chatStore.deleteConversation(conv.id, currentUser.id); }}
+                              className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-red-500 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                          
+                          {/* Foreground Card */}
+                          <motion.div
+                            drag="x"
+                            dragConstraints={{ left: -160, right: 0 }}
+                            dragElastic={0.1}
+                            dragDirectionLock
+                            onClick={() => {
+                              setActiveConv(conv);
+                              chatStore.markAsRead(conv.id, currentUser.id);
+                            }}
+                            className={`relative z-10 flex items-center gap-3.5 p-3 rounded-[24px] cursor-pointer transition-colors select-none ${
+                              activeConv?.id === conv.id
+                                ? 'bg-white dark:bg-zinc-800 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:shadow-none'
+                                : 'bg-transparent hover:bg-white/50 dark:hover:bg-zinc-800/50'
+                            }`}
+                          >
+                          {/* Premium Avatar Container */}
+                          <div className="relative shrink-0 pointer-events-none">
+                            <div className="h-[52px] w-[52px] rounded-full bg-neutral-100 dark:bg-zinc-800 border-2 border-transparent group-hover:border-neutral-200/50 dark:group-hover:border-zinc-700/50 overflow-hidden flex items-center justify-center font-black text-teal-600 text-sm transition-colors">
                               {recipient.avatar ? (
                                 <img src={recipient.avatar} alt={recipient.display_name ?? 'Recipient'} className="h-full w-full object-cover" />
                               ) : (
@@ -1175,88 +1203,61 @@ export default function ChatPlaceholder() {
                               )}
                             </div>
                             
-                            {/* Presence Status */}
+                            {/* Presence Status - Telegram style (small dot on corner) */}
                             {isOnline && (
-                              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-zinc-950" />
+                              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-green-500 border-2 border-white dark:border-zinc-950" />
                             )}
                             {!isOnline && isAway && (
-                              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-950" />
+                              <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-amber-500 border-2 border-white dark:border-zinc-950" />
                             )}
                           </div>
 
                           {/* Meta info column */}
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="font-extrabold text-xs truncate flex items-center gap-1.5 text-neutral-900 dark:text-zinc-100">
+                          <div className="flex-1 min-w-0 flex flex-col justify-center pointer-events-none">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className="font-bold text-sm truncate flex items-center gap-1.5 text-neutral-900 dark:text-zinc-100">
                                 {recipient.display_name}
                                 {recipient.role !== 'User' && (
-                                  <span className="text-[8px] bg-indigo-500/10 text-indigo-500 font-extrabold px-1 rounded uppercase tracking-wider shrink-0">
+                                  <span className="text-[9px] bg-indigo-500/10 text-indigo-500 font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider shrink-0">
                                     {recipient.role}
                                   </span>
                                 )}
                               </span>
                               
-                              <span className="text-[9px] font-bold text-neutral-400 shrink-0">
+                              <span className={`text-[11px] shrink-0 font-medium ${hasUnread ? 'text-teal-600 dark:text-teal-500 font-bold' : 'text-neutral-400'}`}>
                                 {conv.lastMessage ? new Date(conv.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                               </span>
                             </div>
 
-                            <div className="flex items-center justify-between gap-1.5">
-                              <p className="text-[11px] text-neutral-450 dark:text-zinc-400 truncate flex-1 leading-normal font-medium">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-[13px] truncate flex-1 leading-snug ${hasUnread ? 'text-neutral-700 dark:text-zinc-300 font-medium' : 'text-neutral-500 dark:text-zinc-400 font-normal'}`}>
                                 {conv.lastMessage ? (
                                   conv.lastMessage.deleted_for_everyone ? (
                                     <span className="italic text-neutral-400">Deleted message</span>
                                   ) : (
-                                    conv.lastMessage.text || 'Shared Attachment'
+                                    conv.lastMessage.text || (
+                                      <span className="flex items-center gap-1">
+                                        <ImageIcon className="h-3.5 w-3.5" /> Photo
+                                      </span>
+                                    )
                                   )
                                 ) : (
-                                  <span className="italic text-teal-500">Pipeline opened</span>
+                                  <span className="text-teal-500">Draft</span>
                                 )}
                               </p>
 
-                              <div className="flex items-center gap-1 shrink-0">
-                                {isPinned && <Pin className="h-3 w-3 text-teal-500 rotate-45" />}
-                                {isMuted && <VolumeX className="h-3 w-3 text-neutral-400" />}
-                                {conv.unreadCount > 0 && (
-                                  <span className="h-4.5 min-w-4.5 px-1 flex items-center justify-center rounded-full bg-teal-500 text-white font-extrabold text-[9px]">
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {isPinned && <Pin className="h-3.5 w-3.5 text-neutral-400 rotate-45" />}
+                                {isMuted && <VolumeX className="h-3.5 w-3.5 text-neutral-400" />}
+                                {hasUnread && (
+                                  <span className="h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-teal-500 text-white font-bold text-[11px] shadow-sm animate-pulse-soft">
                                     {conv.unreadCount}
                                   </span>
                                 )}
                               </div>
                             </div>
                           </div>
-
-                          {/* Quick overlay action context triggers */}
-                          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 dark:bg-zinc-900/90 rounded-lg p-1 border border-neutral-150 dark:border-zinc-800 transition-opacity z-10">
-                            <button 
-                              onClick={(e) => handleTogglePin(conv.id, e)} 
-                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-teal-500" 
-                              title="Pin Chat"
-                            >
-                              <Pin className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => handleToggleArchive(conv.id, e)} 
-                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-indigo-500" 
-                              title="Archive Chat"
-                            >
-                              <Archive className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => handleToggleMute(conv.id, e)} 
-                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-amber-500" 
-                              title="Mute Notifications"
-                            >
-                              <VolumeX className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => handleDeleteConversation(conv.id, e)} 
-                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-red-500" 
-                              title="Delete Conversation"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
+                          </motion.div>
                         </div>
                       );
                     })}
@@ -1488,10 +1489,10 @@ export default function ChatPlaceholder() {
                           )}
  
                           {/* Message bubble */}
-                          <div className={`p-3.5 rounded-2xl relative ${
+                          <div className={`p-3 px-4 rounded-[20px] relative shadow-sm dark:shadow-none ${
                             isMe 
-                              ? 'bg-neutral-900 dark:bg-white text-white dark:text-zinc-950 rounded-tr-xs shadow-xs' 
-                              : 'bg-white dark:bg-zinc-950 border border-neutral-150 dark:border-zinc-850 rounded-tl-xs shadow-xs text-slate-800 dark:text-zinc-100'
+                              ? 'bg-teal-500 dark:bg-teal-600 text-white rounded-br-sm' 
+                              : 'bg-white dark:bg-zinc-800/80 border border-neutral-100 dark:border-transparent rounded-bl-sm text-neutral-800 dark:text-zinc-100'
                           }`}>
                             {/* Message actions popup overlay (Hover states on desktop) */}
                             <div className={`absolute top-1/2 -translate-y-1/2 ${
@@ -1617,7 +1618,7 @@ export default function ChatPlaceholder() {
                             )}
 
                             {/* Text content */}
-                            <p className="text-xs leading-relaxed font-sans font-medium whitespace-pre-wrap select-text">
+                            <p className="text-[14.5px] leading-snug font-sans whitespace-pre-wrap select-text mb-0.5">
                               {msg.text}
                             </p>
 
@@ -1635,10 +1636,10 @@ export default function ChatPlaceholder() {
                               
                               {/* WhatsApp style double ticks */}
                               {isMe && (
-                                <span>
-                                  {msg.status === 'sent' && <Check className="h-3 w-3 text-neutral-400" />}
-                                  {msg.status === 'delivered' && <CheckCheck className="h-3 w-3 text-neutral-400" />}
-                                  {msg.status === 'read' && <CheckCheck className="h-3 w-3 text-teal-500 dark:text-teal-400" />}
+                                <span className="ml-0.5">
+                                  {msg.status === 'sent' && <Check className="h-3.5 w-3.5 text-white/70" />}
+                                  {msg.status === 'delivered' && <CheckCheck className="h-3.5 w-3.5 text-white/70" />}
+                                  {msg.status === 'read' && <CheckCheck className="h-3.5 w-3.5 text-blue-300" />}
                                 </span>
                               )}
                             </div>
@@ -1920,37 +1921,25 @@ export default function ChatPlaceholder() {
                     </div>
 
                     {/* Send or Voice Button - Floating right */}
-                    <div className="shrink-0 flex items-center justify-center h-[48px] w-[48px] relative overflow-hidden rounded-full bg-teal-500 shadow-md">
-                      <AnimatePresence mode="wait" initial={false}>
-                        {messageText.trim().length > 0 ? (
-                          <motion.button
-                            key="send"
-                            type="submit"
-                            initial={{ scale: 0, opacity: 0, rotate: -45 }}
-                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                            exit={{ scale: 0, opacity: 0, rotate: 45 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            disabled={isRecordingVoice}
-                            className="absolute inset-0 flex items-center justify-center bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white cursor-pointer"
-                          >
-                            <Send className="h-5 w-5 ml-1" />
-                          </motion.button>
-                        ) : (
-                          <motion.button
-                            key="mic"
-                            type="button"
-                            onClick={startVoiceRecording}
-                            initial={{ scale: 0, opacity: 0, rotate: 45 }}
-                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                            exit={{ scale: 0, opacity: 0, rotate: -45 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                            disabled={isRecordingVoice}
-                            className="absolute inset-0 flex items-center justify-center bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white cursor-pointer"
-                          >
-                            <Mic className="h-6 w-6" />
-                          </motion.button>
-                        )}
-                      </AnimatePresence>
+                    <div className="shrink-0 flex items-center justify-center h-[48px] w-[48px]">
+                      {messageText.trim().length > 0 ? (
+                        <button
+                          type="submit"
+                          disabled={isRecordingVoice}
+                          className="h-[48px] w-[48px] flex items-center justify-center rounded-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white shadow-md cursor-pointer transition-transform active:scale-95"
+                        >
+                          <Send className="h-5 w-5 ml-1" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={startVoiceRecording}
+                          disabled={isRecordingVoice}
+                          className="h-[48px] w-[48px] flex items-center justify-center rounded-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white shadow-md cursor-pointer transition-transform active:scale-95"
+                        >
+                          <Mic className="h-6 w-6" />
+                        </button>
+                      )}
                     </div>
                   </form>
                 )}
