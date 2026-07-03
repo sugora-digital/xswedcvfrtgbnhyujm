@@ -9,7 +9,7 @@ import {
   Heart, User, Pin, Archive, VolumeX, Trash2, Edit2, Reply, CornerUpRight, 
   Copy, Paperclip, Image as ImageIcon, FileText, Film, Music, Mic, Smile, X, Info,
   ChevronLeft, ChevronRight, Star, AlertTriangle, ShieldAlert, CheckSquare, Square, Download, Share2,
-  Phone, Video
+  Phone, Video, MoreVertical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { callingStore } from '../lib/callingStore';
@@ -146,6 +146,7 @@ export default function ChatPlaceholder() {
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
   const [chatSearchOpen, setChatSearchOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [chatSearchText, setChatSearchText] = useState('');
   const [starredOpen, setStarredOpen] = useState(false);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
@@ -326,6 +327,36 @@ export default function ChatPlaceholder() {
     }
   }, [currentUser]);
 
+
+  // --- MOBILE BACK NAVIGATION ---
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // If we are in a conversation and user presses back, close the conversation instead of navigating away.
+      if (activeConv) {
+        e.preventDefault();
+        setActiveConv(null);
+        // We pushed state when entering conv, so popping goes back to the chat list (which is /chat)
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeConv]);
+
+  // Push state when entering a conversation
+  useEffect(() => {
+    if (activeConv) {
+      window.history.pushState({ chat: activeConv.id }, '', '/chat');
+    }
+  }, [activeConv?.id]);
+
+
+  // Auto-grow textarea
+  useEffect(() => {
+    if (textInputRef.current) {
+      textInputRef.current.style.height = 'auto';
+      textInputRef.current.style.height = `${Math.min(textInputRef.current.scrollHeight, 120)}px`;
+    }
+  }, [messageText]);
   // --- BROWSER NATIVE PUSH NOTIFICATIONS ---
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
@@ -764,15 +795,8 @@ export default function ChatPlaceholder() {
       onDrop={handleDrop}
     >
       {/* Top Header Panel */}
-      <header className="h-14 shrink-0 border-b border-neutral-200/60 dark:border-zinc-800/60 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md px-4 flex items-center justify-between z-30 shadow-sm">
+      <header className={`h-14 shrink-0 border-b border-neutral-200/60 dark:border-zinc-800/60 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md px-4 flex items-center justify-between z-30 shadow-sm ${activeConv ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center gap-2.5">
-          <button 
-            onClick={() => navigate('/')}
-            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-800 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-zinc-900 md:hidden"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          
           <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-teal-500 to-indigo-500 p-[1px] shadow-sm">
             <div className="flex h-full w-full items-center justify-center rounded-[7px] bg-white dark:bg-zinc-900">
               <svg className="h-4.5 w-4.5 fill-teal-500" viewBox="0 0 512 512">
@@ -973,7 +997,7 @@ export default function ChatPlaceholder() {
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-black uppercase tracking-wider text-neutral-400 dark:text-zinc-500 flex items-center gap-1.5">
                     <MessageSquare className="h-4 w-4 text-teal-500" />
-                    Conversations
+                    Sugora Chats
                   </h2>
                   
                   <button 
@@ -1291,7 +1315,7 @@ export default function ChatPlaceholder() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button 
                     onClick={() => callingStore.startCall(activeConv.recipient, 'voice')}
                     className="p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer"
@@ -1300,48 +1324,63 @@ export default function ChatPlaceholder() {
                     <Phone className="h-4 w-4" />
                   </button>
 
-                  <button 
-                    onClick={() => callingStore.startCall(activeConv.recipient, 'video')}
-                    className="p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer"
-                    title="Video Call"
-                  >
-                    <Video className="h-4 w-4" />
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setHeaderMenuOpen(!headerMenuOpen)}
+                      className={`p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer ${headerMenuOpen ? 'bg-neutral-100 dark:bg-zinc-900' : ''}`}
+                      title="More Options"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
 
-                  <button 
-                    onClick={() => setChatSearchOpen(!chatSearchOpen)}
-                    className={`p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer ${chatSearchOpen ? 'text-teal-500 bg-neutral-100 dark:bg-zinc-900' : ''}`}
-                    title="Search Chat Messages"
-                  >
-                    <Search className="h-4 w-4" />
-                  </button>
-
-                  <button 
-                    onClick={() => setStarredOpen(!starredOpen)}
-                    className={`p-2 rounded-xl text-neutral-500 hover:text-amber-550 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer ${starredOpen ? 'text-amber-550 bg-neutral-100 dark:bg-zinc-900' : ''}`}
-                    title="Starred Messages"
-                  >
-                    <Star className="h-4 w-4" />
-                  </button>
-
-                  <button 
-                    onClick={() => {
-                      setMultiSelectMode(!multiSelectMode);
-                      setSelectedMessageIds([]);
-                    }}
-                    className={`p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer ${multiSelectMode ? 'text-teal-500 bg-neutral-100 dark:bg-zinc-900' : ''}`}
-                    title="Multi-Select Messages"
-                  >
-                    <CheckSquare className="h-4 w-4" />
-                  </button>
-
-                  <button 
-                    onClick={() => setShowProfileDrawer(!showProfileDrawer)}
-                    className="p-2 rounded-xl text-neutral-500 hover:text-teal-500 hover:bg-neutral-100 dark:hover:bg-zinc-900 cursor-pointer"
-                    title="Profile Info"
-                  >
-                    <Info className="h-4 w-4" />
-                  </button>
+                    <AnimatePresence>
+                      {headerMenuOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{ duration: 0.1 }}
+                          className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-xl shadow-xl overflow-hidden z-50 py-1"
+                        >
+                          <button onClick={() => { setHeaderMenuOpen(false); callingStore.startCall(activeConv.recipient, 'video'); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <Video className="h-3.5 w-3.5" /> Video Call
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); setChatSearchOpen(!chatSearchOpen); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <Search className="h-3.5 w-3.5" /> Search Chat
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); setShowProfileDrawer(true); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <Info className="h-3.5 w-3.5" /> View Profile
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); setStarredOpen(true); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <Star className="h-3.5 w-3.5" /> Starred Messages
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); /* Add Shared Media Trigger later if needed */ }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <ImageIcon className="h-3.5 w-3.5" /> Shared Media
+                          </button>
+                          <div className="h-px bg-neutral-200 dark:bg-zinc-800 my-1 mx-2" />
+                          <button onClick={() => { setHeaderMenuOpen(false); handleToggleMute(activeConv.id, { preventDefault: () => {}, stopPropagation: () => {} } as any); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <VolumeX className="h-3.5 w-3.5" /> Mute Chat
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); handleToggleArchive(activeConv.id, { preventDefault: () => {}, stopPropagation: () => {} } as any); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <Archive className="h-3.5 w-3.5" /> Archive Chat
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); alert('User blocked.'); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <ShieldAlert className="h-3.5 w-3.5" /> Block User
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); alert('User reported.'); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <AlertTriangle className="h-3.5 w-3.5" /> Report User
+                          </button>
+                          <div className="h-px bg-neutral-200 dark:bg-zinc-800 my-1 mx-2" />
+                          <button onClick={() => { setHeaderMenuOpen(false); alert('Chat cleared.'); }} className="w-full text-left px-4 py-2 text-xs font-semibold text-neutral-700 dark:text-zinc-300 hover:bg-neutral-100 dark:hover:bg-zinc-800 flex items-center gap-2 text-red-500">
+                            <Trash2 className="h-3.5 w-3.5" /> Clear Chat
+                          </button>
+                          <button onClick={() => { setHeaderMenuOpen(false); handleDeleteConversation(activeConv.id, { preventDefault: () => {}, stopPropagation: () => {} } as any); }} className="w-full text-left px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-2">
+                            <Trash2 className="h-3.5 w-3.5" /> Delete Chat
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
               </div>
 
@@ -1689,56 +1728,38 @@ export default function ChatPlaceholder() {
                     </div>
                   </div>
                 ) : (
-                  <form onSubmit={handleSendMessage} className="flex items-end gap-2 relative">
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Attachment trigger */}
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-teal-500 cursor-pointer text-neutral-500 transition-all"
-                        title="Attach secure file shard"
-                      >
-                        <Paperclip className="h-4.5 w-4.5" />
-                      </button>
+                  <form onSubmit={handleSendMessage} className="flex items-end gap-2 relative w-full pt-1 pb-4 md:pb-2">
+                    {/* Floating rounded composer container */}
+                    <div className="flex-1 flex items-end bg-white dark:bg-zinc-900 border border-neutral-200/80 dark:border-zinc-800/80 rounded-[28px] shadow-sm relative min-h-[48px]">
+                      
                       <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        className="hidden" 
-                        onChange={(e) => {
+                         type="file" 
+                         ref={fileInputRef} 
+                         className="hidden" 
+                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
                             handleFileSelection(e.target.files[0]);
                           }
                         }}
                       />
 
-                      {/* Microphone mic recording trigger */}
-                      <button
-                        type="button"
-                        onClick={startVoiceRecording}
-                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-red-500 cursor-pointer text-neutral-500 transition-all"
-                        title="Record voice memo shard"
-                      >
-                        <Mic className="h-4.5 w-4.5" />
-                      </button>
-
-                      {/* Simple Emoji Menu Selector Popover Trigger */}
-                      <div className="relative">
+                      {/* Emoji trigger on the left */}
+                      <div className="relative shrink-0 flex items-center justify-center h-[48px] w-[48px]">
                         <button
                           type="button"
                           onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-teal-500 cursor-pointer text-neutral-500 transition-all"
+                          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-500 cursor-pointer transition-colors"
                           title="Pick emoji"
                         >
-                          <Smile className="h-4.5 w-4.5" />
+                          <Smile className="h-6 w-6" />
                         </button>
-
                         <AnimatePresence>
                           {showEmojiPicker && (
                             <motion.div 
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: 10 }}
-                              className="absolute bottom-12 left-0 p-3 bg-white dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-2xl shadow-xl w-64 z-30 flex flex-col gap-2.5"
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute bottom-14 left-0 p-3 bg-white dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-[24px] shadow-xl w-64 z-30 flex flex-col gap-2.5 origin-bottom-left"
                             >
                               {/* Picker Tabs */}
                               <div className="flex border-b border-neutral-100 dark:border-zinc-900 text-[10px] font-bold">
@@ -1757,7 +1778,7 @@ export default function ChatPlaceholder() {
                                   </button>
                                 ))}
                               </div>
-
+                              
                               {/* Content based on selected tab */}
                               {activeTabEmoji === 'emoji' && (
                                 <div className="grid grid-cols-6 gap-1.5 max-h-44 overflow-y-auto pt-1">
@@ -1777,7 +1798,7 @@ export default function ChatPlaceholder() {
                                   ))}
                                 </div>
                               )}
-
+                              
                               {activeTabEmoji === 'gif' && (
                                 <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pt-1">
                                   {GIFS.map(gif => (
@@ -1809,7 +1830,7 @@ export default function ChatPlaceholder() {
                                   ))}
                                 </div>
                               )}
-
+                              
                               {activeTabEmoji === 'sticker' && (
                                 <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pt-1">
                                   {STICKERS.map(st => (
@@ -1845,59 +1866,92 @@ export default function ChatPlaceholder() {
                           )}
                         </AnimatePresence>
                       </div>
+
+                      {isRecordingVoice ? (
+                        <div className="flex-1 bg-red-500/10 dark:bg-red-500/15 rounded-xl my-1 mr-2 py-2.5 px-3 flex items-center justify-between text-xs animate-pulse select-none">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                            <span className="font-extrabold text-red-600 dark:text-red-400">{formatVoiceTime(voiceDuration)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button type="button" onClick={() => stopVoiceRecording(false)} className="px-2 py-1 text-red-500 hover:bg-red-500/10 font-bold rounded-lg text-[10px] uppercase cursor-pointer">Cancel</button>
+                            <button type="button" onClick={() => stopVoiceRecording(true)} className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white font-bold rounded-[14px] text-[10px] uppercase shadow-sm cursor-pointer">Send</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex-1 min-w-0 relative flex items-center py-1">
+                          <textarea
+                            ref={textInputRef}
+                            value={messageText}
+                            onChange={(e) => {
+                              setMessageText(e.target.value);
+                              setIsTyping(true);
+                            }}
+                            onKeyDown={handleKeyDown}
+                            placeholder={editingMessage ? "Editing message shard..." : "Type a message..."}
+                            className="w-full bg-transparent border-none py-2 text-sm focus:outline-none dark:text-white resize-none max-h-32 min-h-[36px] font-medium placeholder-neutral-400 dark:placeholder-zinc-500"
+                            rows={1}
+                          />
+                          
+                          {/* Staged edits save key indicator */}
+                          {editingMessage && (
+                            <button
+                              type="button"
+                              onClick={handleSaveEdit}
+                              className="absolute right-0 top-1/2 -translate-y-1/2 p-1 mr-1 text-teal-500 hover:bg-teal-500/10 rounded-lg cursor-pointer font-bold text-[10px]"
+                            >
+                              Save
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Attachment trigger on the right inside composer */}
+                      <div className="shrink-0 flex items-center justify-center h-[48px] w-[48px] mr-1">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-10 w-10 flex items-center justify-center rounded-full hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-500 cursor-pointer transition-colors"
+                          title="Attach file"
+                        >
+                          <Paperclip className="h-6 w-6" />
+                        </button>
+                      </div>
                     </div>
 
-                    {isRecordingVoice ? (
-                      <div className="flex-1 bg-red-500/10 dark:bg-red-500/15 border border-red-500/15 rounded-xl py-2 px-3 flex items-center justify-between text-xs animate-pulse select-none">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />
-                          <span className="font-extrabold text-red-600 dark:text-red-400">Recording Voice: {formatVoiceTime(voiceDuration)}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button type="button" onClick={() => stopVoiceRecording(false)} className="px-2 py-1 text-red-500 hover:bg-red-500/10 font-black rounded-lg text-[9px] uppercase">Cancel</button>
-                          <button type="button" onClick={() => stopVoiceRecording(true)} className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white font-black rounded-lg text-[9px] uppercase">Send</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 min-w-0 relative">
-                        <textarea
-                          ref={textInputRef}
-                          value={messageText}
-                          onChange={(e) => {
-                            setMessageText(e.target.value);
-                            setIsTyping(true);
-                          }}
-                          onKeyDown={handleKeyDown}
-                          placeholder={editingMessage ? "Editing message shard..." : "Type secure encrypted message..."}
-                          className="w-full pl-3 pr-14 py-2.5 bg-neutral-50 dark:bg-zinc-900 border border-neutral-150 dark:border-zinc-800 rounded-xl text-xs focus:outline-none dark:text-white resize-none max-h-24 min-h-10 font-medium"
-                          rows={1}
-                        />
-
-                        {/* Staged edits save key indicator */}
-                        {editingMessage && (
-                          <button
-                            type="button"
-                            onClick={handleSaveEdit}
-                            className="absolute right-12 top-1/2 -translate-y-1/2 p-1 text-teal-500 hover:bg-teal-500/10 rounded-lg cursor-pointer font-bold text-[10px]"
+                    {/* Send or Voice Button - Floating right */}
+                    <div className="shrink-0 flex items-center justify-center h-[48px] w-[48px] relative overflow-hidden rounded-full bg-teal-500 shadow-md">
+                      <AnimatePresence mode="wait" initial={false}>
+                        {messageText.trim().length > 0 ? (
+                          <motion.button
+                            key="send"
+                            type="submit"
+                            initial={{ scale: 0, opacity: 0, rotate: -45 }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                            exit={{ scale: 0, opacity: 0, rotate: 45 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            disabled={isRecordingVoice}
+                            className="absolute inset-0 flex items-center justify-center bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white cursor-pointer"
                           >
-                            Save
-                          </button>
+                            <Send className="h-5 w-5 ml-1" />
+                          </motion.button>
+                        ) : (
+                          <motion.button
+                            key="mic"
+                            type="button"
+                            onClick={startVoiceRecording}
+                            initial={{ scale: 0, opacity: 0, rotate: 45 }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                            exit={{ scale: 0, opacity: 0, rotate: -45 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            disabled={isRecordingVoice}
+                            className="absolute inset-0 flex items-center justify-center bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white cursor-pointer"
+                          >
+                            <Mic className="h-6 w-6" />
+                          </motion.button>
                         )}
-                        
-                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-[9px] font-bold text-neutral-400">
-                          {messageText.length}/{chatSettings.message_length}
-                        </span>
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={isRecordingVoice}
-                      className="h-10 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-black text-xs transition-all shadow-sm shrink-0 cursor-pointer"
-                    >
-                      <span>Send</span>
-                      <Send className="h-3.5 w-3.5" />
-                    </button>
+                      </AnimatePresence>
+                    </div>
                   </form>
                 )}
               </div>
@@ -2393,13 +2447,7 @@ export default function ChatPlaceholder() {
         )}
       </AnimatePresence>
 
-      {/* Mini Footer */}
-      <footer className="h-10 border-t border-neutral-100 dark:border-zinc-900 bg-neutral-50/50 dark:bg-zinc-950 px-6 flex items-center justify-between text-[10px] text-neutral-450 dark:text-zinc-500 shrink-0">
-        <span className="flex items-center gap-1">
-          Made with <Heart className="h-3 w-3 text-red-500 fill-red-500" /> by Sugora Labs Inc.
-        </span>
-        <span>Version 3.0.0 (Core Message Pipeline)</span>
-      </footer>
+
     </div>
   );
 }

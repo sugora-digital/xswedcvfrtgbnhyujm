@@ -159,7 +159,7 @@ export default function App() {
       }
     } else if (path === '/chat' && !currentUser) {
       navigate('/login');
-    } else if ((path === '/login' || path === '/register') && currentUser) {
+    } else if ((path === '/login' || path === '/register' || path === '/') && currentUser) {
       if (userRole === 'Admin') {
         navigate('/admin/dashboard');
       } else if (userRole === 'Support') {

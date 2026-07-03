@@ -1,0 +1,271 @@
+                )}
+                
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Message Composer Footer Panel */}
+              <div className="p-3 border-t border-neutral-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 space-y-2 shrink-0 z-10">
+                {/* Replying banner */}
+                {replyingTo && (
+                  <div className="flex items-center justify-between p-2.5 bg-neutral-50 dark:bg-zinc-900 border border-neutral-150 dark:border-zinc-850 rounded-xl text-[10px]">
+                    <div className="flex items-center gap-2">
+                      <Reply className="h-4 w-4 text-teal-500 rotate-180" />
+                      <div>
+                        <span className="font-extrabold text-neutral-550 block">Replying to @{replyingTo.sender_id === currentUser.id ? 'You' : activeConv.recipient?.username}</span>
+                        <span className="text-neutral-400 truncate max-w-sm block">{replyingTo.text}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setReplyingTo(null)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-500">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Staged file attachment preview */}
+                {attachment && (
+                  <div className="flex items-center justify-between p-2 bg-teal-500/5 border border-teal-500/20 rounded-xl text-[10px]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {attachment.type.startsWith('image/') ? <ImageIcon className="h-4 w-4 text-teal-500" /> : <FileText className="h-4 w-4 text-indigo-500" />}
+                      <div className="min-w-0">
+                        <span className="font-black font-mono block truncate max-w-sm text-neutral-850 dark:text-zinc-200">{attachment.name}</span>
+                        <span className="text-neutral-450 font-bold block">{(attachment.size / (1024 * 1024)).toFixed(2)} MB • Stage Encrypted</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setAttachment(null)} className="p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-500">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Handshake Block Check / Suspension warning */}
+                {activeConv.blocked_by?.length > 0 ? (
+                  <div className="p-4 bg-amber-500/5 border border-amber-500/15 rounded-2xl flex items-center gap-3 text-xs text-amber-600 dark:text-amber-400 font-semibold select-none animate-pulse">
+                    <ShieldAlert className="h-5 w-5 shrink-0 text-amber-500" />
+                    <div>
+                      <p className="font-extrabold uppercase tracking-wider text-[10px]">Pipeline Cryptographic Handshake Suspended</p>
+                      <p className="text-[11px] opacity-85 leading-relaxed font-medium">
+                        This communication channel has been blocked by one of the participants. Unblock user in details panel to resume sharding operations.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSendMessage} className="flex items-end gap-2 relative">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Attachment trigger */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-teal-500 cursor-pointer text-neutral-500 transition-all"
+                        title="Attach secure file shard"
+                      >
+                        <Paperclip className="h-4.5 w-4.5" />
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileSelection(e.target.files[0]);
+                          }
+                        }}
+                      />
+
+                      {/* Microphone mic recording trigger */}
+                      <button
+                        type="button"
+                        onClick={startVoiceRecording}
+                        className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-red-500 cursor-pointer text-neutral-500 transition-all"
+                        title="Record voice memo shard"
+                      >
+                        <Mic className="h-4.5 w-4.5" />
+                      </button>
+
+                      {/* Simple Emoji Menu Selector Popover Trigger */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-neutral-50 hover:bg-neutral-100 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-neutral-150 dark:border-zinc-800 hover:border-neutral-300 hover:text-teal-500 cursor-pointer text-neutral-500 transition-all"
+                          title="Pick emoji"
+                        >
+                          <Smile className="h-4.5 w-4.5" />
+                        </button>
+
+                        <AnimatePresence>
+                          {showEmojiPicker && (
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: 10 }}
+                              className="absolute bottom-12 left-0 p-3 bg-white dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-2xl shadow-xl w-64 z-30 flex flex-col gap-2.5"
+                            >
+                              {/* Picker Tabs */}
+                              <div className="flex border-b border-neutral-100 dark:border-zinc-900 text-[10px] font-bold">
+                                {(['emoji', 'gif', 'sticker'] as const).map((tab) => (
+                                  <button
+                                    key={tab}
+                                    type="button"
+                                    onClick={() => setActiveTabEmoji(tab)}
+                                    className={`flex-1 pb-1.5 uppercase text-center border-b-2 transition-all cursor-pointer ${
+                                      activeTabEmoji === tab
+                                        ? 'border-teal-500 text-teal-600 dark:text-teal-400'
+                                        : 'border-transparent text-neutral-400'
+                                    }`}
+                                  >
+                                    {tab}s
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Content based on selected tab */}
+                              {activeTabEmoji === 'emoji' && (
+                                <div className="grid grid-cols-6 gap-1.5 max-h-44 overflow-y-auto pt-1">
+                                  {['😀','🔥','👍','🎉','🔒','🛡️','💻','🚀','💡','💬','💯','❤️','👏','🙌','😂','😮','😢','🙏'].map(emoji => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      onClick={() => {
+                                        setMessageText(prev => prev + emoji);
+                                        setShowEmojiPicker(false);
+                                        textInputRef.current?.focus();
+                                      }}
+                                      className="text-lg hover:scale-125 transition-transform cursor-pointer flex items-center justify-center p-1.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-zinc-900"
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+
+                              {activeTabEmoji === 'gif' && (
+                                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pt-1">
+                                  {GIFS.map(gif => (
+                                    <button
+                                      key={gif.id}
+                                      type="button"
+                                      onClick={() => {
+                                        chatStore.sendMessage({
+                                          conversation_id: activeConv.id,
+                                          sender_id: currentUser.id,
+                                          text: `Sent GIF: ${gif.name}`,
+                                          type: 'image',
+                                          parent_message_id: replyingTo?.id,
+                                          attachment: {
+                                            id: `gif-${Math.random().toString(36).substring(2, 9)}`,
+                                            file_name: `${gif.name}.gif`,
+                                            file_size: 1048576,
+                                            file_type: 'image/gif',
+                                            file_url: gif.url
+                                          }
+                                        });
+                                        setShowEmojiPicker(false);
+                                      }}
+                                      className="relative rounded-lg overflow-hidden border border-neutral-200 dark:border-zinc-800 hover:border-teal-500 transition-colors cursor-pointer group"
+                                    >
+                                      <img src={gif.url} alt={gif.name} className="h-16 w-full object-cover" />
+                                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white py-0.5 truncate px-1 font-mono">{gif.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+
+                              {activeTabEmoji === 'sticker' && (
+                                <div className="grid grid-cols-2 gap-2 max-h-44 overflow-y-auto pt-1">
+                                  {STICKERS.map(st => (
+                                    <button
+                                      key={st.id}
+                                      type="button"
+                                      onClick={() => {
+                                        chatStore.sendMessage({
+                                          conversation_id: activeConv.id,
+                                          sender_id: currentUser.id,
+                                          text: `Sent Sticker: ${st.name}`,
+                                          type: 'image',
+                                          parent_message_id: replyingTo?.id,
+                                          attachment: {
+                                            id: `sticker-${Math.random().toString(36).substring(2, 9)}`,
+                                            file_name: `${st.name}.png`,
+                                            file_size: 204857,
+                                            file_type: 'image/png',
+                                            file_url: st.url
+                                          }
+                                        });
+                                        setShowEmojiPicker(false);
+                                      }}
+                                      className="relative rounded-lg overflow-hidden border border-neutral-200 dark:border-zinc-800 hover:border-teal-500 transition-colors cursor-pointer"
+                                    >
+                                      <img src={st.url} alt={st.name} className="h-16 w-full object-cover" />
+                                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white py-0.5 truncate px-1 font-mono">{st.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {isRecordingVoice ? (
+                      <div className="flex-1 bg-red-500/10 dark:bg-red-500/15 border border-red-500/15 rounded-xl py-2 px-3 flex items-center justify-between text-xs animate-pulse select-none">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                          <span className="font-extrabold text-red-600 dark:text-red-400">Recording Voice: {formatVoiceTime(voiceDuration)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button type="button" onClick={() => stopVoiceRecording(false)} className="px-2 py-1 text-red-500 hover:bg-red-500/10 font-black rounded-lg text-[9px] uppercase">Cancel</button>
+                          <button type="button" onClick={() => stopVoiceRecording(true)} className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white font-black rounded-lg text-[9px] uppercase">Send</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-w-0 relative">
+                        <textarea
+                          ref={textInputRef}
+                          value={messageText}
+                          onChange={(e) => {
+                            setMessageText(e.target.value);
+                            setIsTyping(true);
+                          }}
+                          onKeyDown={handleKeyDown}
+                          placeholder={editingMessage ? "Editing message shard..." : "Type secure encrypted message..."}
+                          className="w-full pl-3 pr-14 py-2.5 bg-neutral-50 dark:bg-zinc-900 border border-neutral-150 dark:border-zinc-800 rounded-xl text-xs focus:outline-none dark:text-white resize-none max-h-24 min-h-10 font-medium"
+                          rows={1}
+                        />
+
+                        {/* Staged edits save key indicator */}
+                        {editingMessage && (
+                          <button
+                            type="button"
+                            onClick={handleSaveEdit}
+                            className="absolute right-12 top-1/2 -translate-y-1/2 p-1 text-teal-500 hover:bg-teal-500/10 rounded-lg cursor-pointer font-bold text-[10px]"
+                          >
+                            Save
+                          </button>
+                        )}
+                        
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-[9px] font-bold text-neutral-400">
+                          {messageText.length}/{chatSettings.message_length}
+                        </span>
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isRecordingVoice}
+                      className="h-10 px-4 flex items-center justify-center gap-1.5 rounded-xl bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-white font-black text-xs transition-all shadow-sm shrink-0 cursor-pointer"
+                    >
+                      <span>Send</span>
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-8 relative overflow-hidden">
+              <div className="absolute inset-0 bg-[radial-gradient(#0d94880c_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+              <div className="relative z-10 max-w-lg space-y-6">
+                <div className="relative inline-flex items-center justify-center h-20 w-20 rounded-3xl bg-gradient-to-tr from-teal-500/10 to-indigo-500/10 border border-teal-500/20 text-teal-500 mx-auto">
+                  <MessageSquare className="h-9 w-9 text-teal-500 animate-pulse" />
