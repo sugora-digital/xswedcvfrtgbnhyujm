@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, ArrowRight, CheckCircle, Database, AlertCircle, Sparkles, UserPlus, LogIn } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle, Database, AlertCircle, Sparkles, UserPlus, LogIn, LayoutDashboard, MessageSquare, LogOut } from 'lucide-react';
 import { getSupabaseConfig, supabaseClient } from '../lib/supabase';
 import { navigate } from '../lib/router';
 import { motion, AnimatePresence } from 'motion/react';
 
-export default function CTA() {
+interface CTAProps {
+  currentUser?: any;
+  userRole?: string | null;
+}
+
+export default function CTA({ currentUser, userRole }: CTAProps = {}) {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -66,43 +71,109 @@ export default function CTA() {
           <div className="lg:col-span-6 p-8 sm:p-12 rounded-[40px] border border-neutral-200/80 dark:border-neutral-900 bg-neutral-50/50 dark:bg-neutral-900/30 backdrop-blur-md shadow-sm flex flex-col justify-between text-left relative overflow-hidden">
             <div className="absolute -top-12 -left-12 w-44 h-44 bg-blue-500/5 blur-2xl rounded-full" />
             
-            <div className="space-y-6 relative z-10">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/10 text-xs font-bold text-blue-600 dark:text-cyan-400 uppercase tracking-widest">
-                <Sparkles className="h-3.5 w-3.5" />
-                Sovereign Nodes Ready
-              </span>
+            {currentUser ? (
+              <>
+                <div className="space-y-6 relative z-10">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/10 text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Secure Node Active
+                  </span>
 
-              <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white leading-tight">
-                Enter the future. <br />
-                Claim your keys.
-              </h3>
+                  <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white leading-tight">
+                    Welcome back. <br />
+                    Session is active.
+                  </h3>
 
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium">
-                Create a secure public-key profile instantly using Supabase Auth, or access your existing encrypted workspace dashboard securely from any browser sandbox.
-              </p>
-            </div>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium">
+                    Your secure keys are verified. You are authenticated as <span className="text-blue-500 dark:text-cyan-400 font-bold">@{currentUser.email?.split('@')[0]}</span> ({currentUser.email}). Navigate directly to your workspace below.
+                  </p>
+                </div>
 
-            {/* Large Sign Up & Sign In buttons */}
-            <div className="space-y-3 pt-8 relative z-10">
-              <button
-                id="cta-register-btn"
-                onClick={() => navigate('/register')}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 text-white font-extrabold text-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <UserPlus className="h-4.5 w-4.5" />
-                <span>Create Free Sovereign Account</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
+                {/* Logged in action buttons */}
+                <div className="space-y-3 pt-8 relative z-10">
+                  <button
+                    id="cta-chats-btn"
+                    onClick={() => navigate('/chat')}
+                    className="w-full py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 text-white font-extrabold text-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <MessageSquare className="h-4.5 w-4.5" />
+                    <span>Open Encrypted Shard Chats</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
 
-              <button
-                id="cta-login-btn"
-                onClick={() => navigate('/login')}
-                className="w-full py-4 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-800 dark:text-neutral-200 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <LogIn className="h-4.5 w-4.5" />
-                <span>Sign In to Existing Node</span>
-              </button>
-            </div>
+                  {userRole === 'Admin' && (
+                    <button
+                      id="cta-admin-btn"
+                      onClick={() => navigate('/admin/dashboard')}
+                      className="w-full py-4 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-850 dark:text-neutral-200 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <LayoutDashboard className="h-4.5 w-4.5 text-teal-500" />
+                      <span>Access Admin Dashboard</span>
+                    </button>
+                  )}
+
+                  {userRole === 'Support' && (
+                    <button
+                      id="cta-support-btn"
+                      onClick={() => navigate('/support/dashboard')}
+                      className="w-full py-4 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-850 dark:text-neutral-200 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <LayoutDashboard className="h-4.5 w-4.5 text-teal-500" />
+                      <span>Access Support Dashboard</span>
+                    </button>
+                  )}
+
+                  <button
+                    id="cta-logout-btn"
+                    onClick={() => supabaseClient.auth.signOut()}
+                    className="w-full py-3.5 bg-red-500/10 hover:bg-red-500/15 border border-dashed border-red-500/30 text-red-500 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Exit Sovereign Session</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-6 relative z-10">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/10 text-xs font-bold text-blue-600 dark:text-cyan-400 uppercase tracking-widest">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Sovereign Nodes Ready
+                  </span>
+
+                  <h3 className="text-3xl sm:text-4xl font-black text-neutral-900 dark:text-white leading-tight">
+                    Enter the future. <br />
+                    Claim your keys.
+                  </h3>
+
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed font-medium">
+                    Create a secure public-key profile instantly using Supabase Auth, or access your existing encrypted workspace dashboard securely from any browser sandbox.
+                  </p>
+                </div>
+
+                {/* Large Sign Up & Sign In buttons */}
+                <div className="space-y-3 pt-8 relative z-10">
+                  <button
+                    id="cta-register-btn"
+                    onClick={() => navigate('/register')}
+                    className="w-full py-4 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-500 text-white font-extrabold text-sm rounded-2xl shadow-lg hover:shadow-xl hover:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <UserPlus className="h-4.5 w-4.5" />
+                    <span>Create Free Sovereign Account</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    id="cta-login-btn"
+                    onClick={() => navigate('/login')}
+                    className="w-full py-4 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-800 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-800 dark:text-neutral-200 font-extrabold text-sm rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <LogIn className="h-4.5 w-4.5" />
+                    <span>Sign In to Existing Node</span>
+                  </button>
+                </div>
+              </>
+            )}
 
           </div>
 

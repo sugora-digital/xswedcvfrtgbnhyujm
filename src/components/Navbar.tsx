@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Sun, Moon, Monitor, ArrowRight } from 'lucide-react';
+import { Menu, X, Sun, Moon, Monitor, ArrowRight, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useTheme } from './ThemeContext';
 import { navigate } from '../lib/router';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabaseClient } from '../lib/supabase';
 
-export default function Navbar() {
+interface NavbarProps {
+  currentUser?: any;
+  userRole?: string | null;
+}
+
+export default function Navbar({ currentUser, userRole }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeDropdownOpen, setThemeDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -152,21 +158,64 @@ export default function Navbar() {
 
           {/* Action Links */}
           <div className="flex items-center gap-2">
-            <button
-              id="desktop-login-button"
-              className="px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100/50 dark:hover:bg-neutral-900/50 rounded-xl transition-all cursor-pointer"
-              onClick={() => navigate('/login')}
-            >
-              Login
-            </button>
-            <button
-              id="desktop-signup-button"
-              onClick={() => navigate('/register')}
-              className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-            >
-              Sign Up
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            {currentUser ? (
+              <>
+                {userRole === 'Admin' && (
+                  <button
+                    id="desktop-admin-dashboard-button"
+                    onClick={() => navigate('/admin/dashboard')}
+                    className="px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100/50 dark:hover:bg-neutral-900/50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <LayoutDashboard className="h-4 w-4 text-teal-500" />
+                    <span>Admin DB</span>
+                  </button>
+                )}
+                {userRole === 'Support' && (
+                  <button
+                    id="desktop-support-dashboard-button"
+                    onClick={() => navigate('/support/dashboard')}
+                    className="px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100/50 dark:hover:bg-neutral-900/50 rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <LayoutDashboard className="h-4 w-4 text-teal-500" />
+                    <span>Support DB</span>
+                  </button>
+                )}
+                <button
+                  id="desktop-chats-button"
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Shard Chats</span>
+                </button>
+                <button
+                  id="desktop-logout-button"
+                  onClick={() => supabaseClient.auth.signOut()}
+                  className="p-2 rounded-xl text-neutral-500 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="h-4.5 w-4.5" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  id="desktop-login-button"
+                  className="px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:text-neutral-950 dark:hover:text-white hover:bg-neutral-100/50 dark:hover:bg-neutral-900/50 rounded-xl transition-all cursor-pointer"
+                  onClick={() => navigate('/login')}
+                >
+                  Login
+                </button>
+                <button
+                  id="desktop-signup-button"
+                  onClick={() => navigate('/register')}
+                  className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 dark:shadow-blue-500/10 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                >
+                  Sign Up
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -217,26 +266,81 @@ export default function Navbar() {
                 </button>
               ))}
               <div className="pt-4 border-t border-neutral-100 dark:border-neutral-800 space-y-2">
-                <button
-                  id="mobile-login-button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    navigate('/login');
-                  }}
-                  className="block w-full text-center py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg border border-neutral-200 dark:border-neutral-800 cursor-pointer"
-                >
-                  Login
-                </button>
-                <button
-                  id="mobile-signup-button"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    navigate('/register');
-                  }}
-                  className="block w-full text-center py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer"
-                >
-                  Sign Up
-                </button>
+                {currentUser ? (
+                  <>
+                    {userRole === 'Admin' && (
+                      <button
+                        id="mobile-admin-dashboard-button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate('/admin/dashboard');
+                        }}
+                        className="block w-full text-center py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg border border-neutral-200 dark:border-neutral-800 cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <LayoutDashboard className="h-3.5 w-3.5 text-teal-500" />
+                        <span>Admin Dashboard</span>
+                      </button>
+                    )}
+                    {userRole === 'Support' && (
+                      <button
+                        id="mobile-support-dashboard-button"
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          navigate('/support/dashboard');
+                        }}
+                        className="block w-full text-center py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg border border-neutral-200 dark:border-neutral-800 cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <LayoutDashboard className="h-3.5 w-3.5 text-teal-500" />
+                        <span>Support Dashboard</span>
+                      </button>
+                    )}
+                    <button
+                      id="mobile-chats-button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate('/chat');
+                      }}
+                      className="block w-full text-center py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      <span>Go to Shard Chats</span>
+                    </button>
+                    <button
+                      id="mobile-logout-button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        supabaseClient.auth.signOut();
+                      }}
+                      className="block w-full text-center py-2 text-xs font-semibold text-red-500 hover:bg-red-500/10 rounded-lg border border-dashed border-red-500/30 cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Exit sovereign node</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      id="mobile-login-button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate('/login');
+                      }}
+                      className="block w-full text-center py-2.5 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white rounded-lg border border-neutral-200 dark:border-neutral-800 cursor-pointer"
+                    >
+                      Login
+                    </button>
+                    <button
+                      id="mobile-signup-button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate('/register');
+                      }}
+                      className="block w-full text-center py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-lg shadow-md cursor-pointer"
+                    >
+                      Sign Up
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

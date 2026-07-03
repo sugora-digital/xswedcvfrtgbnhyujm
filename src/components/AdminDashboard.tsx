@@ -66,9 +66,9 @@ const INITIAL_MOCK_USERS = [
   { id: '44444444-4444-4444-4444-444444444444', username: 'malicious_node', email: 'spammer@malice.com', display_name: 'Node 404', role: 'User', status: 'Suspended', bio: 'Testing message rates', avatar: '', created_at: '2026-05-12T09:00:00Z', last_login: '2026-05-15T18:22:00Z', email_verified: true },
   
   // Production requested accounts
-  { id: 'admin-uuid-0000-0000-000000000000', username: 'admin_sugora', email: 'admin@sugora.com', display_name: 'Sugora Admin', role: 'Admin', status: 'Active', bio: 'Sugora Admin Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
-  { id: 'support-uuid-0000-0000-000000000000', username: 'support_sugora', email: 'support@sugora.com', display_name: 'Sugora Support', role: 'Support', status: 'Active', bio: 'Sugora Support Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
-  { id: 'user1-uuid-0000-0000-000000000000', username: 'user1_sugora', email: 'user1@sugora.com', display_name: 'Sugora User', role: 'User', status: 'Active', bio: 'Sugora User Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true }
+  { id: 'ada1da1d-0000-0000-0000-000000000000', username: 'admin_sugora', email: 'admin@sugora.com', display_name: 'Sugora Admin', role: 'Admin', status: 'Active', bio: 'Sugora Admin Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
+  { id: 'da7da7da-0000-0000-0000-000000000000', username: 'support_sugora', email: 'support@sugora.com', display_name: 'Sugora Support', role: 'Support', status: 'Active', bio: 'Sugora Support Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
+  { id: 'f5a183d2-be3c-41ab-85dc-9ee15e2bf01e', username: 'user1_sugora', email: 'user1@sugora.com', display_name: 'Sugora User', role: 'User', status: 'Active', bio: 'Sugora User Account', avatar: '', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true }
 ];
 
 const INITIAL_MOCK_FILES = [
@@ -697,7 +697,7 @@ export default function AdminDashboard() {
                     <div key={log.id} className="flex items-center justify-between p-3 bg-neutral-50/50 dark:bg-zinc-950/40 rounded-2xl border border-neutral-200/40 dark:border-zinc-800/40">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center font-bold text-xs uppercase">
-                          {log.user.slice(0, 2)}
+                          {(log.user ?? '').slice(0, 2)}
                         </div>
                         <div>
                           <span className="font-extrabold text-xs text-neutral-900 dark:text-white block">@{log.user}</span>
@@ -1029,7 +1029,7 @@ export default function AdminDashboard() {
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-3">
                                 <div className="h-8.5 w-8.5 rounded-xl bg-neutral-100 dark:bg-zinc-850 flex items-center justify-center font-bold text-teal-500 shrink-0 border border-neutral-200/30 overflow-hidden">
-                                  {user.avatar ? <img src={user.avatar} className="h-full w-full object-cover" alt="" /> : user.username.slice(0, 2).toUpperCase()}
+                                  {user.avatar ? <img src={user.avatar} className="h-full w-full object-cover" alt="" /> : (user.username ?? '').slice(0, 2).toUpperCase()}
                                 </div>
                                 <div>
                                   <span className="font-extrabold text-neutral-900 dark:text-white block">
@@ -1718,7 +1718,7 @@ export default function AdminDashboard() {
                             {u.avatar ? (
                               <img src={u.avatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                             ) : (
-                              u.username.slice(0, 2)
+                              (u.username ?? '').slice(0, 2)
                             )}
                           </div>
                           <div>
@@ -2012,7 +2012,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="text-[10px] font-mono space-y-1">
                   <p><span className="text-zinc-500">API Gateway Endpoint:</span> {dbConfig.url}</p>
-                  <p><span className="text-zinc-500">Anon Credentials Token:</span> <span className="opacity-40">***{dbConfig.anonKey.slice(-12)}</span></p>
+                  <p><span className="text-zinc-500">Anon Credentials Token:</span> <span className="opacity-40">***{(dbConfig.anonKey ?? '').slice(-12)}</span></p>
                   <p><span className="text-zinc-500">Database Pool Host:</span> aws-1-ap-southeast-1.pooler.supabase.com:5432</p>
                 </div>
               </div>

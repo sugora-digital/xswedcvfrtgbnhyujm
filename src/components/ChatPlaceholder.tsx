@@ -71,6 +71,28 @@ function LinkPreview({ text }: { text: string }) {
   );
 }
 
+function safeFormatTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (_) {
+    return '';
+  }
+}
+
+function safeFormatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+  } catch (_) {
+    return '';
+  }
+}
+
 export default function ChatPlaceholder() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [currentUser, setCurrentUser] = useState<any | null>(null);
@@ -107,7 +129,8 @@ export default function ChatPlaceholder() {
   const [dragActive, setDragActive] = useState(false);
 
   // Search User to start direct message
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Local settings reference from store
@@ -137,35 +160,106 @@ export default function ChatPlaceholder() {
 
   // Authenticate and join store
   useEffect(() => {
+    let active = true;
     async function getUser() {
       try {
         const { data } = await supabaseClient.auth.getSession();
+        if (!active) return;
+        
         if (data?.session?.user) {
           const user = data.session.user;
-          setCurrentUser(user);
-          setUsername(user.user_metadata?.username || user.email?.split('@')[0] || 'sugora_user');
           
-          // Set user presence online
-          chatStore.setPresence(user.id, 'online');
+          // Force wait/validate profile exist and fetched from database
+          let profileLoaded = false;
+          let retries = 5;
+          let userProfile: any = null;
+          
+          while (retries > 0 && !profileLoaded && active) {
+            try {
+              const { data: profileList } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id);
+              
+              if (profileList && profileList.length > 0) {
+                userProfile = profileList[0];
+                profileLoaded = true;
+              } else {
+                await new Promise((resolve) => setTimeout(resolve, 400));
+                retries--;
+              }
+            } catch (_) {
+              await new Promise((resolve) => setTimeout(resolve, 400));
+              retries--;
+            }
+          }
+          
+          if (!profileLoaded && active) {
+            // Profile fallback: create dynamic mock-to-real profile insert
+            const emailLower = user.email?.toLowerCase() || '';
+            const isSpecialSignup = ['admin@sugora.com', 'support@sugora.com', 'user1@sugora.com', 'ceo.neomcq@gmail.com'].includes(emailLower);
+            const usernameVal = user.user_metadata?.username || emailLower.split('@')[0] || 'user_' + Math.random().toString(36).substring(2, 7);
+            
+            let role = 'User';
+            if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
+              role = 'Admin';
+            } else if (emailLower.includes('support')) {
+              role = 'Support';
+            }
+            
+            const profileData = {
+              id: user.id,
+              username: usernameVal.toLowerCase().trim(),
+              email: emailLower,
+              display_name: usernameVal,
+              avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+              bio: '',
+              email_verified: isSpecialSignup ? true : false,
+              created_at: new Date().toISOString(),
+              last_login: new Date().toISOString(),
+              online_status: 'online',
+              status: 'Active',
+              role: role
+            };
+            
+            try {
+              await supabaseClient.from('profiles').insert(profileData);
+              userProfile = profileData;
+            } catch (_) {
+              userProfile = profileData;
+            }
+          }
+          
+          if (active && userProfile) {
+            setCurrentUser(user);
+            setUsername(userProfile.username || user.user_metadata?.username || user.email?.split('@')[0] || 'sugora_user');
+            // Set user presence online
+            chatStore.setPresence(user.id, 'online');
+          }
         } else {
           navigate('/login');
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       }
     }
     getUser();
 
     // Cleanup presence offline
     return () => {
-      const saved = localStorage.getItem('sugora_mock_session');
+      active = false;
+      const saved = localStorage.getItem('sugora_real_auth_bypass_session') || localStorage.getItem('sugora_mock_session');
       if (saved) {
-        const session = JSON.parse(saved);
-        if (session?.user?.id) {
-          chatStore.setPresence(session.user.id, 'offline');
-        }
+        try {
+          const session = JSON.parse(saved);
+          if (session?.user?.id) {
+            chatStore.setPresence(session.user.id, 'offline');
+          }
+        } catch (_) {}
       }
     };
   }, []);
@@ -509,15 +603,21 @@ export default function ChatPlaceholder() {
     if (!currentUser) return;
     const conv = chatStore.startConversation(currentUser.id, recipient.id, 'one-to-one');
     setActiveConv(conv);
-    setShowNewChatModal(false);
+    setIsNewChatOpen(false);
+    setUserSearchQuery('');
   };
 
   // Filters conversation list
   const filteredConversations = conversations.filter(c => {
     // Tab filters
     if (activeTab === 'unread' && c.unreadCount === 0) return false;
-    if (activeTab === 'archived' && !c.archived_by.includes(currentUser?.id)) return false;
-    if (activeTab !== 'archived' && c.archived_by.includes(currentUser?.id)) return false;
+    const archivedList = c.archived_by ?? [];
+    if (activeTab === 'archived' && !archivedList.includes(currentUser?.id)) return false;
+    if (activeTab !== 'archived' && archivedList.includes(currentUser?.id)) return false;
+
+    // Filter out conversations with no messages, UNLESS it's the active one
+    const hasMessages = !!c.lastMessage;
+    if (!hasMessages && activeConv?.id !== c.id) return false;
 
     // Search query
     if (searchQuery) {
@@ -527,6 +627,39 @@ export default function ChatPlaceholder() {
       return userMatch || textMatch;
     }
     return true;
+  });
+
+  // Find profiles (users) matching the search query that don't already have an active conversation
+  const filteredUsersToChat = chatStore.getProfiles().filter(p => {
+    // Exclude current logged-in user
+    if (p.id === currentUser?.id) return false;
+
+    // Exclude deleted and disabled accounts
+    const isDeleted = p.status?.toLowerCase() === 'deleted' || (p as any).deleted === true;
+    const isDisabled = p.status?.toLowerCase() === 'disabled' || p.status?.toLowerCase() === 'suspended' || (p as any).disabled === true;
+    if (isDeleted || isDisabled) return false;
+
+    // Search query
+    const q = userSearchQuery.toLowerCase().trim();
+    if (!q) return true; // Show all active users by default if query is empty
+
+    const displayName = (p.display_name || '').toLowerCase();
+    const username = (p.username || '').toLowerCase();
+    const email = (p.email || '').toLowerCase();
+    const fullName = ((p as any).full_name || '').toLowerCase();
+
+    // Exact matches
+    const isExactUsername = username === q || username === q.replace(/^@/, '');
+    const isExactDisplayName = displayName === q;
+    const isExactFullName = fullName === q;
+
+    // Partial matches
+    const isPartialUsername = username.includes(q) || username.includes(q.replace(/^@/, ''));
+    const isPartialDisplayName = displayName.includes(q);
+    const isPartialFullName = fullName.includes(q);
+    const isPartialEmail = email.includes(q);
+
+    return isExactUsername || isExactDisplayName || isExactFullName || isPartialUsername || isPartialDisplayName || isPartialFullName || isPartialEmail;
   });
 
   // Action methods
@@ -616,12 +749,10 @@ export default function ChatPlaceholder() {
   }
 
   // Pre-filter list of potential recipients
-  const profilesList = chatStore.getProfiles().filter(p => p.id !== currentUser?.id);
-  const filteredUsersToChat = profilesList.filter(p => {
-    const q = userSearchQuery.toLowerCase();
-    const displayName = p.display_name || '';
-    const username = p.username || '';
-    return displayName.toLowerCase().includes(q) || username.toLowerCase().includes(q);
+  const profilesList = chatStore.getProfiles().filter(p => {
+    const isSelf = p.id === currentUser?.id;
+    const isActive = !p.status || p.status.toLowerCase() === 'active';
+    return !isSelf && isActive;
   });
 
   return (
@@ -739,50 +870,148 @@ export default function ChatPlaceholder() {
             activeConv ? 'hidden md:flex' : 'flex'
           }`}
         >
-          {/* Search bar and Filters header */}
-          <div className="p-4 border-b border-neutral-100 dark:border-zinc-900 space-y-3 shrink-0">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-black uppercase tracking-wider text-neutral-400 dark:text-zinc-500 flex items-center gap-1.5">
-                <MessageSquare className="h-4 w-4 text-teal-500" />
-                Conversations
-              </h2>
-              
-              <button 
-                onClick={() => setShowNewChatModal(true)}
-                className="p-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-              >
-                <span>New DM</span>
-              </button>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-              <input 
-                type="text" 
-                placeholder="Search secure conversations..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-neutral-50 dark:bg-zinc-900 rounded-xl text-xs focus:outline-none border border-neutral-200/50 dark:border-zinc-850"
-              />
-            </div>
-
-            {/* Filter Tabs */}
-            <div className="flex border-b border-neutral-100 dark:border-zinc-900 text-xs">
-              {(['all', 'unread', 'archived', 'calls'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 pb-2 font-extrabold capitalize text-center border-b-2 transition-all cursor-pointer ${
-                    activeTab === tab
-                      ? 'border-teal-500 text-teal-600 dark:text-teal-400'
-                      : 'border-transparent text-neutral-400 hover:text-neutral-600 dark:hover:text-zinc-300'
-                  }`}
+          {isNewChatOpen ? (
+            <div className="flex flex-col h-full bg-white dark:bg-zinc-950">
+              {/* Header with back button */}
+              <div className="p-4 border-b border-neutral-100 dark:border-zinc-900 flex items-center gap-3 shrink-0 bg-neutral-50/50 dark:bg-zinc-950">
+                <button 
+                  onClick={() => {
+                    setIsNewChatOpen(false);
+                    setUserSearchQuery('');
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-neutral-100 dark:hover:bg-zinc-900 text-neutral-500 dark:text-zinc-400 cursor-pointer"
+                  title="Back to Chats"
                 >
-                  {tab}
+                  <ArrowLeft className="h-4.5 w-4.5" />
                 </button>
-              ))}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xs font-black uppercase tracking-wider text-neutral-800 dark:text-zinc-100">
+                    New Chat
+                  </h2>
+                  <p className="text-[10px] text-neutral-400">Select peer to start conversation</p>
+                </div>
+              </div>
+
+              {/* Search input (fixed at top, always visible) */}
+              <div className="p-4 border-b border-neutral-100 dark:border-zinc-900 bg-white dark:bg-zinc-950 shrink-0">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-450" />
+                  <input 
+                    type="text" 
+                    placeholder="Search by username or name..." 
+                    value={userSearchQuery}
+                    onChange={(e) => {
+                      setUserSearchQuery(e.target.value);
+                      setIsSearchLoading(true);
+                      const timer = setTimeout(() => setIsSearchLoading(false), 200);
+                      return () => clearTimeout(timer);
+                    }}
+                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 dark:bg-zinc-900 rounded-xl text-xs focus:outline-none border border-neutral-200/50 dark:border-zinc-850 focus:border-teal-500 dark:focus:border-teal-500 transition-colors"
+                    autoFocus
+                  />
+                </div>
+              </div>
+
+              {/* Users List or Loading indicator or Empty State */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {isSearchLoading ? (
+                  <div className="text-center py-12 px-4 space-y-2">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-teal-500 border-t-transparent mx-auto" />
+                    <p className="text-[10px] text-neutral-400 dark:text-zinc-500 uppercase tracking-wider font-extrabold">Filtering peer nodes...</p>
+                  </div>
+                ) : filteredUsersToChat.length === 0 ? (
+                  <div className="text-center py-12 px-4 space-y-2">
+                    <Users className="h-8 w-8 text-neutral-350 dark:text-zinc-700 mx-auto" />
+                    <p className="text-xs font-bold text-neutral-400 dark:text-zinc-500 uppercase tracking-wider">No users found</p>
+                    <p className="text-[10px] text-neutral-400 dark:text-zinc-550">No peer profiles match your query.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {filteredUsersToChat.map((user) => {
+                      const isOnline = chatStore.getPresence(user.id).status === 'online';
+                      return (
+                        <div
+                          key={user.id}
+                          onClick={() => handleStartDirectChat(user)}
+                          className="flex items-center gap-3 p-3 rounded-2xl hover:bg-neutral-50 dark:hover:bg-zinc-900/30 cursor-pointer transition-all border border-transparent hover:border-neutral-100 dark:hover:border-zinc-900/50"
+                        >
+                          <div className="relative shrink-0">
+                            <div className="h-10 w-10 rounded-xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200/50 dark:border-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-xs">
+                              {user.avatar ? (
+                                <img src={user.avatar} alt={user.display_name} className="h-full w-full object-cover animate-fade-in" />
+                              ) : (
+                                (user.display_name || '').substring(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-zinc-950 ${isOnline ? 'bg-green-500' : 'bg-neutral-300 dark:bg-zinc-700'}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-extrabold text-xs text-neutral-900 dark:text-zinc-100 truncate">
+                                {user.display_name}
+                              </p>
+                              {user.email_verified && (
+                                <span className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-teal-500 text-white p-0.5" title="Verified User">
+                                  <Check className="h-2 w-2 stroke-[4]" />
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-neutral-450 dark:text-zinc-500">@{user.username} • {user.role}</p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-neutral-400 dark:text-zinc-550 shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Search bar and Filters header */}
+              <div className="p-4 border-b border-neutral-100 dark:border-zinc-900 space-y-3 shrink-0">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-black uppercase tracking-wider text-neutral-400 dark:text-zinc-500 flex items-center gap-1.5">
+                    <MessageSquare className="h-4 w-4 text-teal-500" />
+                    Conversations
+                  </h2>
+                  
+                  <button 
+                    onClick={() => setIsNewChatOpen(true)}
+                    className="p-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                  >
+                    <span>New DM</span>
+                  </button>
+                </div>
+
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Search secure conversations..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-neutral-50 dark:bg-zinc-900 rounded-xl text-xs focus:outline-none border border-neutral-200/50 dark:border-zinc-850"
+                  />
+                </div>
+
+                {/* Filter Tabs */}
+                <div className="flex border-b border-neutral-100 dark:border-zinc-900 text-xs">
+                  {(['all', 'unread', 'archived', 'calls'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`flex-1 pb-2 font-extrabold capitalize text-center border-b-2 transition-all cursor-pointer ${
+                        activeTab === tab
+                          ? 'border-teal-500 text-teal-600 dark:text-teal-400'
+                          : 'border-transparent text-neutral-400 hover:text-neutral-600 dark:hover:text-zinc-300'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
           {/* Conversation List Scroll Area */}
           <div className="flex-1 overflow-y-auto divide-y divide-neutral-100 dark:divide-zinc-900 p-2 space-y-1">
@@ -881,126 +1110,140 @@ export default function ChatPlaceholder() {
                 <p className="text-[11px] text-neutral-400 dark:text-zinc-500">Initiate a direct messaging pipeline using the 'New DM' button.</p>
               </div>
             ) : (
-              filteredConversations.map((conv) => {
-                const recipient = conv.recipient;
-                if (!recipient) return null;
-
-                const isPinned = conv.pinned_by?.includes(currentUser?.id);
-                const isMuted = conv.muted_by?.includes(currentUser?.id);
-                const isOnline = chatStore.getPresence(recipient.id).status === 'online';
-                const isAway = chatStore.getPresence(recipient.id).status === 'away';
-
-                return (
-                  <div
-                    key={conv.id}
-                    onClick={() => {
-                      setActiveConv(conv);
-                      chatStore.markAsRead(conv.id, currentUser.id);
-                    }}
-                    className={`group relative flex items-start gap-3 p-3 rounded-2xl cursor-pointer transition-all select-none ${
-                      activeConv?.id === conv.id
-                        ? 'bg-neutral-100/80 dark:bg-zinc-900 text-neutral-900 dark:text-white'
-                        : 'hover:bg-neutral-50/50 dark:hover:bg-zinc-900/30'
-                    }`}
-                  >
-                    {/* Avatar Container */}
-                    <div className="relative shrink-0">
-                      <div className="h-11 w-11 rounded-xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200/50 dark:border-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-sm">
-                        {recipient.avatar ? (
-                          <img src={recipient.avatar} alt={recipient.display_name} className="h-full w-full object-cover" />
-                        ) : (
-                          recipient.display_name.slice(0, 2).toUpperCase()
-                        )}
+              <div className="space-y-4">
+                {/* 1. Existing Conversations */}
+                {filteredConversations.length > 0 && (
+                  <div className="space-y-1">
+                    {searchQuery && (
+                      <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-neutral-400 dark:text-zinc-500">
+                        Active Shard Chats ({filteredConversations.length})
                       </div>
-                      
-                      {/* Presence Status */}
-                      {isOnline && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-zinc-950" />
-                      )}
-                      {!isOnline && isAway && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-950" />
-                      )}
-                    </div>
+                    )}
+                    {filteredConversations.map((conv) => {
+                      const recipient = conv.recipient;
+                      if (!recipient) return null;
 
-                    {/* Meta info column */}
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-extrabold text-xs truncate flex items-center gap-1.5 text-neutral-900 dark:text-zinc-100">
-                          {recipient.display_name}
-                          {recipient.role !== 'User' && (
-                            <span className="text-[8px] bg-indigo-500/10 text-indigo-500 font-extrabold px-1 rounded uppercase tracking-wider shrink-0">
-                              {recipient.role}
-                            </span>
-                          )}
-                        </span>
-                        
-                        <span className="text-[9px] font-bold text-neutral-400 shrink-0">
-                          {conv.lastMessage ? new Date(conv.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
-                      </div>
+                      const isPinned = conv.pinned_by?.includes(currentUser?.id);
+                      const isMuted = conv.muted_by?.includes(currentUser?.id);
+                      const isOnline = chatStore.getPresence(recipient.id).status === 'online';
+                      const isAway = chatStore.getPresence(recipient.id).status === 'away';
 
-                      <div className="flex items-center justify-between gap-1.5">
-                        <p className="text-[11px] text-neutral-450 dark:text-zinc-400 truncate flex-1 leading-normal font-medium">
-                          {conv.lastMessage ? (
-                            conv.lastMessage.deleted_for_everyone ? (
-                              <span className="italic text-neutral-400">Deleted message</span>
-                            ) : (
-                              conv.lastMessage.text || 'Shared Attachment'
-                            )
-                          ) : (
-                            <span className="italic text-teal-500">Pipeline opened</span>
-                          )}
-                        </p>
+                      return (
+                        <div
+                          key={conv.id}
+                          onClick={() => {
+                            setActiveConv(conv);
+                            chatStore.markAsRead(conv.id, currentUser.id);
+                          }}
+                          className={`group relative flex items-start gap-3 p-3 rounded-2xl cursor-pointer transition-all select-none ${
+                            activeConv?.id === conv.id
+                              ? 'bg-neutral-100/80 dark:bg-zinc-900 text-neutral-900 dark:text-white'
+                              : 'hover:bg-neutral-50/50 dark:hover:bg-zinc-900/30'
+                          }`}
+                        >
+                          {/* Avatar Container */}
+                          <div className="relative shrink-0">
+                            <div className="h-11 w-11 rounded-xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200/50 dark:border-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-sm">
+                              {recipient.avatar ? (
+                                <img src={recipient.avatar} alt={recipient.display_name ?? 'Recipient'} className="h-full w-full object-cover" />
+                              ) : (
+                                (recipient.display_name ?? '').slice(0, 2).toUpperCase()
+                              )}
+                            </div>
+                            
+                            {/* Presence Status */}
+                            {isOnline && (
+                              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white dark:ring-zinc-950" />
+                            )}
+                            {!isOnline && isAway && (
+                              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white dark:ring-zinc-950" />
+                            )}
+                          </div>
 
-                        <div className="flex items-center gap-1 shrink-0">
-                          {isPinned && <Pin className="h-3 w-3 text-teal-500 rotate-45" />}
-                          {isMuted && <VolumeX className="h-3 w-3 text-neutral-400" />}
-                          {conv.unreadCount > 0 && (
-                            <span className="h-4.5 min-w-4.5 px-1 flex items-center justify-center rounded-full bg-teal-500 text-white font-extrabold text-[9px]">
-                              {conv.unreadCount}
-                            </span>
-                          )}
+                          {/* Meta info column */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="font-extrabold text-xs truncate flex items-center gap-1.5 text-neutral-900 dark:text-zinc-100">
+                                {recipient.display_name}
+                                {recipient.role !== 'User' && (
+                                  <span className="text-[8px] bg-indigo-500/10 text-indigo-500 font-extrabold px-1 rounded uppercase tracking-wider shrink-0">
+                                    {recipient.role}
+                                  </span>
+                                )}
+                              </span>
+                              
+                              <span className="text-[9px] font-bold text-neutral-400 shrink-0">
+                                {conv.lastMessage ? new Date(conv.lastMessage.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-1.5">
+                              <p className="text-[11px] text-neutral-450 dark:text-zinc-400 truncate flex-1 leading-normal font-medium">
+                                {conv.lastMessage ? (
+                                  conv.lastMessage.deleted_for_everyone ? (
+                                    <span className="italic text-neutral-400">Deleted message</span>
+                                  ) : (
+                                    conv.lastMessage.text || 'Shared Attachment'
+                                  )
+                                ) : (
+                                  <span className="italic text-teal-500">Pipeline opened</span>
+                                )}
+                              </p>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isPinned && <Pin className="h-3 w-3 text-teal-500 rotate-45" />}
+                                {isMuted && <VolumeX className="h-3 w-3 text-neutral-400" />}
+                                {conv.unreadCount > 0 && (
+                                  <span className="h-4.5 min-w-4.5 px-1 flex items-center justify-center rounded-full bg-teal-500 text-white font-extrabold text-[9px]">
+                                    {conv.unreadCount}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick overlay action context triggers */}
+                          <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 dark:bg-zinc-900/90 rounded-lg p-1 border border-neutral-150 dark:border-zinc-800 transition-opacity z-10">
+                            <button 
+                              onClick={(e) => handleTogglePin(conv.id, e)} 
+                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-teal-500" 
+                              title="Pin Chat"
+                            >
+                              <Pin className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleToggleArchive(conv.id, e)} 
+                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-indigo-500" 
+                              title="Archive Chat"
+                            >
+                              <Archive className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleToggleMute(conv.id, e)} 
+                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-amber-500" 
+                              title="Mute Notifications"
+                            >
+                              <VolumeX className="h-3 w-3" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDeleteConversation(conv.id, e)} 
+                              className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-red-500" 
+                              title="Delete Conversation"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Quick overlay action context triggers */}
-                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-white/90 dark:bg-zinc-900/90 rounded-lg p-1 border border-neutral-150 dark:border-zinc-800 transition-opacity z-10">
-                      <button 
-                        onClick={(e) => handleTogglePin(conv.id, e)} 
-                        className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-teal-500" 
-                        title="Pin Chat"
-                      >
-                        <Pin className="h-3 w-3" />
-                      </button>
-                      <button 
-                        onClick={(e) => handleToggleArchive(conv.id, e)} 
-                        className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-indigo-500" 
-                        title="Archive Chat"
-                      >
-                        <Archive className="h-3 w-3" />
-                      </button>
-                      <button 
-                        onClick={(e) => handleToggleMute(conv.id, e)} 
-                        className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-amber-500" 
-                        title="Mute Notifications"
-                      >
-                        <VolumeX className="h-3 w-3" />
-                      </button>
-                      <button 
-                        onClick={(e) => handleDeleteConversation(conv.id, e)} 
-                        className="p-1 hover:bg-neutral-100 dark:hover:bg-zinc-800 rounded text-neutral-500 hover:text-red-500" 
-                        title="Delete Conversation"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
+                      );
+                    })}
                   </div>
-                );
-              })
+                )}
+              </div>
             )}
           </div>
-        </aside>
+        </>
+      )}
+    </aside>
 
         {/* MAIN MESSAGING CANVAS AREA */}
         <main className="flex-1 bg-slate-50 dark:bg-zinc-900/30 flex flex-col relative overflow-hidden">
@@ -1019,12 +1262,12 @@ export default function ChatPlaceholder() {
                   <div className="relative shrink-0">
                     <div className="h-10 w-10 rounded-xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200/50 dark:border-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-xs">
                       {activeConv.recipient?.avatar ? (
-                        <img src={activeConv.recipient.avatar} alt={activeConv.recipient.display_name} className="h-full w-full object-cover" />
+                        <img src={activeConv.recipient.avatar} alt={activeConv.recipient?.display_name ?? 'Recipient'} className="h-full w-full object-cover" />
                       ) : (
-                        activeConv.recipient?.display_name?.slice(0, 2).toUpperCase()
+                        (activeConv.recipient?.display_name ?? '').slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    {chatStore.getPresence(activeConv.recipient?.id).status === 'online' && (
+                    {chatStore.getPresence(activeConv.recipient?.id || '').status === 'online' && (
                       <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white dark:ring-zinc-950" />
                     )}
                   </div>
@@ -1032,17 +1275,17 @@ export default function ChatPlaceholder() {
                   <div className="min-w-0">
                     <h3 className="font-extrabold text-xs text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5 truncate">
                       {activeConv.recipient?.display_name}
-                      {activeConv.recipient?.role !== 'User' && (
+                      {activeConv.recipient?.role && activeConv.recipient?.role !== 'User' && (
                         <span className="text-[8px] bg-teal-500/15 text-teal-600 dark:text-teal-400 font-extrabold px-1 rounded uppercase tracking-wider shrink-0">
                           {activeConv.recipient?.role}
                         </span>
                       )}
                     </h3>
                     <p className="text-[10px] text-neutral-450 dark:text-zinc-500 font-bold truncate">
-                      {chatStore.getPresence(activeConv.recipient?.id).status === 'online' ? (
+                      {chatStore.getPresence(activeConv.recipient?.id || '').status === 'online' ? (
                         <span className="text-emerald-500 animate-pulse">Active now</span>
                       ) : (
-                        `Last seen: ${new Date(chatStore.getPresence(activeConv.recipient?.id).last_seen).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        `Last seen: ${safeFormatTime(chatStore.getPresence(activeConv.recipient?.id || '').last_seen) || 'Offline'}`
                       )}
                     </p>
                   </div>
@@ -1696,7 +1939,7 @@ export default function ChatPlaceholder() {
 
                 <div className="flex items-center justify-center gap-3">
                   <button
-                    onClick={() => setShowNewChatModal(true)}
+                    onClick={() => setIsNewChatOpen(true)}
                     className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-black text-xs shadow-md transition-all cursor-pointer"
                   >
                     Start New Shard Direct Message
@@ -1730,10 +1973,10 @@ export default function ChatPlaceholder() {
                 {/* Visual Avatar */}
                 <div className="space-y-2.5">
                   <div className="h-20 w-20 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200 dark:border-zinc-800 overflow-hidden mx-auto flex items-center justify-center font-black text-teal-500 text-2xl shadow-sm">
-                    {activeConv.recipient.avatar ? (
+                    {activeConv.recipient?.avatar ? (
                       <img src={activeConv.recipient.avatar} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      activeConv.recipient.display_name.slice(0, 2).toUpperCase()
+                      (activeConv.recipient?.display_name ?? '').slice(0, 2).toUpperCase()
                     )}
                   </div>
                   <div>
@@ -1809,64 +2052,6 @@ export default function ChatPlaceholder() {
         </AnimatePresence>
       </div>
 
-      {/* MODAL: DIRECT MESSAGE NEW USER START */}
-      <AnimatePresence>
-        {showNewChatModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-white dark:bg-zinc-950 border border-neutral-200/50 dark:border-zinc-800/50 rounded-3xl p-6 shadow-2xl text-left space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-black uppercase tracking-wider flex items-center gap-2">
-                  <Users className="h-4.5 w-4.5 text-teal-500" />
-                  Spin up Direct Message
-                </h3>
-                <button onClick={() => setShowNewChatModal(false)} className="p-1 rounded-lg hover:bg-neutral-50 dark:hover:bg-zinc-900 text-neutral-400">
-                  <X className="h-4.5 w-4.5" />
-                </button>
-              </div>
-
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-                <input 
-                  type="text" 
-                  placeholder="Search user by display name or @username..." 
-                  value={userSearchQuery}
-                  onChange={(e) => setUserSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-neutral-50 dark:bg-zinc-900 rounded-xl text-xs focus:outline-none border border-neutral-200/50 dark:border-zinc-855"
-                />
-              </div>
-
-              <div className="max-h-60 overflow-y-auto space-y-1 pt-2">
-                {filteredUsersToChat.length === 0 ? (
-                  <p className="text-center py-6 text-xs font-bold text-neutral-400 uppercase tracking-widest">No matching users</p>
-                ) : (
-                  filteredUsersToChat.map(user => (
-                    <div
-                      key={user.id}
-                      onClick={() => handleStartDirectChat(user)}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-zinc-900 cursor-pointer transition-all"
-                    >
-                      <div className="h-9 w-9 rounded-xl bg-neutral-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-xs shrink-0">
-                        {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : user.display_name.slice(0,2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-extrabold text-xs text-neutral-900 dark:text-white">{user.display_name}</p>
-                        <p className="text-[10px] text-neutral-400">@{user.username} • {user.role}</p>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-neutral-400" />
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* MODAL: FORWARD MESSAGE SELECTION */}
       <AnimatePresence>
         {showForwardModal && (
@@ -1900,7 +2085,7 @@ export default function ChatPlaceholder() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-xl bg-neutral-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center font-black text-teal-600 text-xs shrink-0">
-                        {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : user.display_name.slice(0,2).toUpperCase()}
+                        {user.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : (user.display_name ?? '').slice(0,2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="font-extrabold text-xs text-neutral-900 dark:text-white">{user.display_name}</p>

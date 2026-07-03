@@ -513,6 +513,41 @@ async function main() {
       `);
     }
 
+    // 16. Enable Supabase Realtime publication for tables
+    console.log('Enabling Supabase Realtime publication on tables...');
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+          CREATE PUBLICATION supabase_realtime;
+        END IF;
+
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE conversations;
+        EXCEPTION WHEN others THEN
+          RAISE NOTICE 'Table conversations might already be in publication';
+        END;
+
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE participants;
+        EXCEPTION WHEN others THEN
+          RAISE NOTICE 'Table participants might already be in publication';
+        END;
+
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+        EXCEPTION WHEN others THEN
+          RAISE NOTICE 'Table messages might already be in publication';
+        END;
+
+        BEGIN
+          ALTER PUBLICATION supabase_realtime ADD TABLE profiles;
+        EXCEPTION WHEN others THEN
+          RAISE NOTICE 'Table profiles might already be in publication';
+        END;
+      END $$;
+    `);
+
     console.log('Database schema successfully provisioned and updated!');
   } catch (err) {
     console.error('Database setup failed:', err);

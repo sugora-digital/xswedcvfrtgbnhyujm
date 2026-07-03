@@ -686,15 +686,15 @@ export default function SupportDashboard() {
                   {/* Description bubble from the user (The original message) */}
                   <div className="flex gap-3 max-w-2xl">
                     <div className="h-8.5 w-8.5 rounded-xl bg-neutral-100 dark:bg-zinc-855 text-neutral-600 dark:text-zinc-300 flex items-center justify-center shrink-0 font-bold text-xs uppercase border border-neutral-200/50">
-                      {selectedTicket.username.slice(0, 2)}
+                      {(selectedTicket?.username ?? '').slice(0, 2)}
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-neutral-900 dark:text-white">@{selectedTicket.username}</span>
-                        <span className="text-[9px] text-neutral-400">{new Date(selectedTicket.created_at || Date.now()).toLocaleTimeString()}</span>
+                        <span className="text-xs font-black text-neutral-900 dark:text-white">@{selectedTicket?.username ?? 'user'}</span>
+                        <span className="text-[9px] text-neutral-400">{new Date(selectedTicket?.created_at || Date.now()).toLocaleTimeString()}</span>
                       </div>
                       <div className="p-4 bg-neutral-100/50 dark:bg-zinc-900/50 border border-neutral-150 dark:border-zinc-850 rounded-2xl">
-                        <p className="text-xs text-neutral-700 dark:text-zinc-300 leading-relaxed font-medium">{selectedTicket.description}</p>
+                        <p className="text-xs text-neutral-700 dark:text-zinc-300 leading-relaxed font-medium">{selectedTicket?.description}</p>
                       </div>
                     </div>
                   </div>
@@ -715,16 +715,16 @@ export default function SupportDashboard() {
                       const isAgent = agents.some(a => a.id === msg.sender_id);
                       const senderName = isAgent 
                         ? agents.find(a => a.id === msg.sender_id)?.username || 'Advocate'
-                        : selectedTicket.username;
+                        : selectedTicket?.username || 'user';
 
                       return (
                         <div key={msg.id} className={`flex gap-3 max-w-2xl ${isAgent ? 'ml-auto flex-row-reverse text-right' : ''}`}>
                           <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs uppercase border ${
                             isAgent 
                               ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' 
-                              : 'bg-neutral-100 dark:bg-zinc-850 text-neutral-600 dark:text-zinc-300 border-neutral-200/50'
+                              : 'bg-neutral-100 dark:bg-zinc-855 text-neutral-600 dark:text-zinc-300 border-neutral-200/50'
                           }`}>
-                            {senderName.slice(0, 2)}
+                            {(senderName ?? '').slice(0, 2)}
                           </div>
                           <div className="space-y-1">
                             <div className={`flex items-center gap-2 ${isAgent ? 'justify-end' : ''}`}>
@@ -789,7 +789,7 @@ export default function SupportDashboard() {
                 
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-xl bg-neutral-100 dark:bg-zinc-850 text-neutral-600 dark:text-zinc-300 flex items-center justify-center font-black text-sm border border-neutral-200/40">
-                    {selectedTicket.username.slice(0, 2).toUpperCase()}
+                    {(selectedTicket?.username ?? '').slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <span className="font-extrabold text-xs text-neutral-900 dark:text-white block">@{selectedTicket.username}</span>
@@ -957,7 +957,7 @@ export default function SupportDashboard() {
                               {recipient.avatar ? (
                                 <img src={recipient.avatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
-                                recipient.username.slice(0, 2)
+                                (recipient.username ?? '').slice(0, 2)
                               )}
                             </div>
                             <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-zinc-950 ${
@@ -1009,7 +1009,7 @@ export default function SupportDashboard() {
                       {selectedChat.recipient?.avatar ? (
                         <img src={selectedChat.recipient.avatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                       ) : (
-                        selectedChat.recipient?.username?.slice(0, 2) || 'CS'
+                        (selectedChat.recipient?.username ?? '').slice(0, 2) || 'CS'
                       )}
                     </div>
                     <div>
@@ -1082,12 +1082,12 @@ export default function SupportDashboard() {
                           
                           {/* Avatar bubble */}
                           <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs uppercase border overflow-hidden bg-neutral-100 dark:bg-zinc-850 text-neutral-600 dark:text-zinc-300 border-neutral-200/50">
-                            {isMe ? 'AD' : senderProfile.username.slice(0, 2)}
+                            {isMe ? 'AD' : (senderProfile?.username ?? '').slice(0, 2)}
                           </div>
 
                           <div className="space-y-1 max-w-sm sm:max-w-md">
                             <div className={`flex items-center gap-2 ${isMe ? 'justify-end' : ''}`}>
-                              <span className="text-xs font-black text-neutral-900 dark:text-white">@{senderProfile.username}</span>
+                              <span className="text-xs font-black text-neutral-900 dark:text-white">@{senderProfile?.username ?? 'user'}</span>
                               <span className="text-[9px] text-neutral-400">{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
 
@@ -1197,6 +1197,17 @@ export default function SupportDashboard() {
                         </div>
                       );
                     })
+                  )}
+
+                  {chatStore.getTypingUsers(selectedChat.id, currentAgentId).length > 0 && (
+                    <div className="flex gap-2 items-center text-xs text-neutral-500 dark:text-zinc-400 font-extrabold italic animate-pulse py-1 pl-11">
+                      <div className="flex gap-1 shrink-0">
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span>@{selectedChat.recipient?.username || 'Customer'} is typing...</span>
+                    </div>
                   )}
                 </div>
 
@@ -1311,7 +1322,7 @@ export default function SupportDashboard() {
                     {selectedChat.recipient?.avatar ? (
                       <img src={selectedChat.recipient.avatar} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
-                      selectedChat.recipient?.username?.slice(0, 2).toUpperCase()
+                      (selectedChat.recipient?.username ?? '').slice(0, 2).toUpperCase()
                     )}
                   </div>
                   <div>

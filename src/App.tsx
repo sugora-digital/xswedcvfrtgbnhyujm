@@ -35,6 +35,68 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
+    async function ensureUserProfile(user: any): Promise<string> {
+      try {
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id);
+
+        if (profile && profile.length > 0) {
+          if (profile[0].status === 'Suspended') {
+            await supabaseClient.auth.signOut();
+            setCurrentUser(null);
+            setUserRole(null);
+            navigate('/login');
+            throw new Error('Suspended');
+          }
+          return profile[0].role || 'User';
+        } else {
+          // Profile does not exist, let's create it!
+          const emailLower = user.email?.toLowerCase() || '';
+          const isSpecialSignup = ['admin@sugora.com', 'support@sugora.com', 'user1@sugora.com', 'ceo.neomcq@gmail.com'].includes(emailLower);
+          const username = user.user_metadata?.username || emailLower.split('@')[0] || 'user_' + Math.random().toString(36).substring(2, 7);
+
+          let role = 'User';
+          if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
+            role = 'Admin';
+          } else if (emailLower.includes('support')) {
+            role = 'Support';
+          }
+
+          const profileData = {
+            id: user.id,
+            username: username.toLowerCase().trim(),
+            email: emailLower,
+            display_name: username,
+            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
+            bio: '',
+            email_verified: isSpecialSignup ? true : false,
+            created_at: new Date().toISOString(),
+            last_login: new Date().toISOString(),
+            online_status: 'online',
+            status: 'Active',
+            role: role
+          };
+
+          await supabaseClient.from('profiles').insert(profileData);
+          return role;
+        }
+      } catch (e: any) {
+        if (e?.message === 'Suspended') {
+          throw e;
+        }
+        // Fallback role on other errors
+        const emailLower = user.email?.toLowerCase() || '';
+        if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
+          return 'Admin';
+        } else if (emailLower.includes('support')) {
+          return 'Support';
+        }
+        return 'User';
+      }
+    }
+
     async function checkAuth() {
       try {
         const { data } = await supabaseClient.auth.getSession();
@@ -42,42 +104,11 @@ export default function App() {
           const user = data.session.user;
           setCurrentUser(user);
           
-          // Fetch role
           try {
-            const { data: profile } = await supabaseClient
-              .from('profiles')
-              .select('role, status')
-              .eq('id', user.id);
-            
-            if (profile && profile.length > 0) {
-              if (profile[0].status === 'Suspended') {
-                await supabaseClient.auth.signOut();
-                setCurrentUser(null);
-                setUserRole(null);
-                navigate('/login');
-                return;
-              }
-              setUserRole(profile[0].role || 'User');
-            } else {
-              // Fallback based on email domains
-              const emailLower = user.email?.toLowerCase() || '';
-              let role = 'User';
-              if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
-                role = 'Admin';
-              } else if (emailLower.includes('support')) {
-                role = 'Support';
-              }
-              setUserRole(role);
-            }
-          } catch (e) {
-            const emailLower = user.email?.toLowerCase() || '';
-            let role = 'User';
-            if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
-              role = 'Admin';
-            } else if (emailLower.includes('support')) {
-              role = 'Support';
-            }
+            const role = await ensureUserProfile(user);
             setUserRole(role);
+          } catch (e) {
+            console.error('ensureUserProfile error:', e);
           }
         } else {
           setCurrentUser(null);
@@ -97,38 +128,10 @@ export default function App() {
       if (session?.user) {
         setCurrentUser(session.user);
         try {
-          const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('role, status')
-            .eq('id', session.user.id);
-          if (profile && profile.length > 0) {
-            if (profile[0].status === 'Suspended') {
-              await supabaseClient.auth.signOut();
-              setCurrentUser(null);
-              setUserRole(null);
-              navigate('/login');
-              return;
-            }
-            setUserRole(profile[0].role || 'User');
-          } else {
-            const emailLower = session.user.email?.toLowerCase() || '';
-            let role = 'User';
-            if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
-              role = 'Admin';
-            } else if (emailLower.includes('support')) {
-              role = 'Support';
-            }
-            setUserRole(role);
-          }
-        } catch (_) {
-          const emailLower = session.user.email?.toLowerCase() || '';
-          let role = 'User';
-          if (emailLower === 'ceo.neomcq@gmail.com' || emailLower.includes('admin')) {
-            role = 'Admin';
-          } else if (emailLower.includes('support')) {
-            role = 'Support';
-          }
+          const role = await ensureUserProfile(session.user);
           setUserRole(role);
+        } catch (e) {
+          console.error('ensureUserProfile change error:', e);
         }
       } else {
         setCurrentUser(null);
@@ -220,7 +223,7 @@ export default function App() {
         return (
           <div className="min-h-screen bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-50 selection:bg-teal-500/30 selection:text-teal-900 dark:selection:text-teal-200 transition-colors duration-300">
             {/* Navigation Bar */}
-            <Navbar />
+            <Navbar currentUser={currentUser} userRole={userRole} />
 
             {/* Primary Sections */}
             <main>
@@ -249,7 +252,7 @@ export default function App() {
               <FAQ />
 
               {/* SECTION 10: Waitlist Subscription & Sign Up / Sign In Grid */}
-              <CTA />
+              <CTA currentUser={currentUser} userRole={userRole} />
             </main>
 
             {/* SECTION 11: Directory links, social profiles, and theme control widget */}

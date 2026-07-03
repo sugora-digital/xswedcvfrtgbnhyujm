@@ -94,6 +94,14 @@ export function getRealSupabaseClient() {
 }
 
 // --- Default configurations for local/offline fallback ---
+export function generateValidUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 const DEFAULT_MOCK_PROFILES = [
   { id: '11111111-1111-1111-1111-111111111111', username: 'ceo_neomcq', email: 'ceo.neomcq@gmail.com', display_name: 'Neo MCQ', role: 'Admin', status: 'Active', bio: 'Founder & CEO of Sugora Labs', created_at: '2026-01-15T08:30:00Z', last_login: '2026-07-01T23:19:00Z', email_verified: true },
   { id: '22222222-2222-2222-2222-222222222222', username: 'alice_support', email: 'alice.support@sugora.io', display_name: 'Alice Agent', role: 'Support', status: 'Active', bio: 'Senior Cryptography Advocate', created_at: '2026-02-10T11:45:00Z', last_login: '2026-07-01T22:40:00Z', email_verified: true },
@@ -101,9 +109,9 @@ const DEFAULT_MOCK_PROFILES = [
   { id: '44444444-4444-4444-4444-444444444444', username: 'malicious_node', email: 'spammer@malice.com', display_name: 'Node 404', role: 'User', status: 'Suspended', bio: 'Testing message rates', created_at: '2026-05-12T09:00:00Z', last_login: '2026-05-15T18:22:00Z', email_verified: true },
   
   // Production requested accounts
-  { id: 'admin-uuid-0000-0000-000000000000', username: 'admin_sugora', email: 'admin@sugora.com', display_name: 'Sugora Admin', role: 'Admin', status: 'Active', bio: 'Sugora Admin Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
-  { id: 'support-uuid-0000-0000-000000000000', username: 'support_sugora', email: 'support@sugora.com', display_name: 'Sugora Support', role: 'Support', status: 'Active', bio: 'Sugora Support Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
-  { id: 'user1-uuid-0000-0000-000000000000', username: 'user1_sugora', email: 'user1@sugora.com', display_name: 'Sugora User', role: 'User', status: 'Active', bio: 'Sugora User Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true }
+  { id: 'ada1da1d-0000-0000-0000-000000000000', username: 'admin_sugora', email: 'admin@sugora.com', display_name: 'Sugora Admin', role: 'Admin', status: 'Active', bio: 'Sugora Admin Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
+  { id: 'da7da7da-0000-0000-0000-000000000000', username: 'support_sugora', email: 'support@sugora.com', display_name: 'Sugora Support', role: 'Support', status: 'Active', bio: 'Sugora Support Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true },
+  { id: 'f5a183d2-be3c-41ab-85dc-9ee15e2bf01e', username: 'user1_sugora', email: 'user1@sugora.com', display_name: 'Sugora User', role: 'User', status: 'Active', bio: 'Sugora User Account', created_at: '2026-07-01T23:39:40Z', last_login: '2026-07-01T23:39:40Z', email_verified: true }
 ];
 
 const getMockProfiles = () => {
@@ -144,12 +152,12 @@ export const supabaseClient: any = {
           if (isSpecial) {
             console.log('Bypassing real Supabase signUp for special account:', emailLower);
             const stableIdMap: Record<string, string> = {
-              'admin@sugora.com': 'admin-uuid-0000-0000-000000000000',
-              'support@sugora.com': 'support-uuid-0000-0000-000000000000',
-              'user1@sugora.com': 'user1-uuid-0000-0000-000000000000',
+              'admin@sugora.com': 'ada1da1d-0000-0000-0000-000000000000',
+              'support@sugora.com': 'da7da7da-0000-0000-0000-000000000000',
+              'user1@sugora.com': 'f5a183d2-be3c-41ab-85dc-9ee15e2bf01e',
               'ceo.neomcq@gmail.com': '11111111-1111-1111-1111-111111111111'
             };
-            const userId = stableIdMap[emailLower] || 'user-uuid-' + Math.random().toString(36).substring(2, 11);
+            const userId = stableIdMap[emailLower] || generateValidUUID();
             
             const mockUser = {
               id: userId,
@@ -192,12 +200,12 @@ export const supabaseClient: any = {
           if (isSpecial) {
             console.log('Bypassing real Supabase signInWithPassword for special account:', emailLower);
             const stableIdMap: Record<string, string> = {
-              'admin@sugora.com': 'admin-uuid-0000-0000-000000000000',
-              'support@sugora.com': 'support-uuid-0000-0000-000000000000',
-              'user1@sugora.com': 'user1-uuid-0000-0000-000000000000',
+              'admin@sugora.com': 'ada1da1d-0000-0000-0000-000000000000',
+              'support@sugora.com': 'da7da7da-0000-0000-0000-000000000000',
+              'user1@sugora.com': 'f5a183d2-be3c-41ab-85dc-9ee15e2bf01e',
               'ceo.neomcq@gmail.com': '11111111-1111-1111-1111-111111111111'
             };
-            const userId = stableIdMap[emailLower] || 'user-uuid-' + Math.random().toString(36).substring(2, 11);
+            const userId = stableIdMap[emailLower] || generateValidUUID();
             
             const mockUser = {
               id: userId,
@@ -304,7 +312,7 @@ export const supabaseClient: any = {
           return { data: { user: null }, error: { message: 'User already exists.' } };
         }
         
-        const userId = 'user-uuid-' + Math.random().toString(36).substring(2, 11);
+        const userId = generateValidUUID();
         const newUser = { id: userId, email, user_metadata: options?.data };
         
         let role = 'User';
@@ -410,7 +418,7 @@ export const supabaseClient: any = {
           const dataArray = Array.isArray(newData) ? newData : [newData];
           
           const preparedData = dataArray.map(item => ({
-            id: item.id || 'user-uuid-' + Math.random().toString(36).substring(2, 11),
+            id: item.id || generateValidUUID(),
             username: item.username || 'sugora_user',
             email: item.email || 'user@sugora.io',
             display_name: item.username || 'Sugora User',
