@@ -32,6 +32,13 @@ export interface Conversation {
   type: 'one-to-one' | 'group' | 'support';
   title?: string;
   avatar?: string;
+  description?: string;
+  creator_id?: string;
+  permissions?: {
+    send_messages: 'everyone' | 'admins';
+    edit_info: 'everyone' | 'admins';
+    invite_members: 'everyone' | 'admins';
+  };
   created_at: string;
   updated_at: string;
   pinned_by: string[]; // List of user IDs who pinned it
@@ -46,6 +53,7 @@ export interface Participant {
   conversation_id: string;
   user_id: string;
   joined_at: string;
+  role?: string;
 }
 
 export interface UserPresence {
@@ -353,42 +361,27 @@ class ChatStore {
   }
 
   private saveToStorage(keys: ('conversations' | 'participants' | 'messages' | 'presence' | 'userControls' | 'settings' | 'privacySettings' | 'reports')[]) {
-    try {
-      if (keys.includes('conversations')) {
-        localStorage.setItem('sugora_chat_conversations', JSON.stringify(this.conversations));
-        set('sugora_chat_conversations', this.conversations);
+    const saveItem = (key, data, skipLocal = false) => {
+      try {
+        if (!skipLocal) {
+          localStorage.setItem(key, JSON.stringify(data));
+        }
+      } catch (e) {
+        console.warn('localStorage save failed for', key, e);
       }
-      if (keys.includes('participants')) {
-        localStorage.setItem('sugora_chat_participants', JSON.stringify(this.participants));
-        set('sugora_chat_participants', this.participants);
-      }
-      if (keys.includes('messages')) {
-        localStorage.setItem('sugora_chat_messages', JSON.stringify(this.messages));
-        set('sugora_chat_messages', this.messages);
-      }
-      if (keys.includes('presence')) {
-        localStorage.setItem('sugora_chat_presence', JSON.stringify(this.presence));
-        set('sugora_chat_presence', this.presence);
-      }
-      if (keys.includes('userControls')) {
-        localStorage.setItem('sugora_chat_user_controls', JSON.stringify(this.userControls));
-        set('sugora_chat_user_controls', this.userControls);
-      }
-      if (keys.includes('settings')) {
-        localStorage.setItem('sugora_chat_settings', JSON.stringify(this.settings));
-        set('sugora_chat_settings', this.settings);
-      }
-      if (keys.includes('privacySettings')) {
-        localStorage.setItem('sugora_chat_privacy_settings', JSON.stringify(this.privacySettings));
-        set('sugora_chat_privacy_settings', this.privacySettings);
-      }
-      if (keys.includes('reports')) {
-        localStorage.setItem('sugora_chat_reports', JSON.stringify(this.reports));
-        set('sugora_chat_reports', this.reports);
-      }
-    } catch (e) {
-      console.error('Failed to save to storage:', e);
-    }
+      try {
+        set(key, data).catch(err => console.error('IDB save failed for', key, err));
+      } catch(e) {}
+    };
+
+    if (keys.includes('conversations')) saveItem('sugora_chat_conversations', this.conversations);
+    if (keys.includes('participants')) saveItem('sugora_chat_participants', this.participants);
+    if (keys.includes('messages')) saveItem('sugora_chat_messages', this.messages, true); // Skip localStorage for messages
+    if (keys.includes('presence')) saveItem('sugora_chat_presence', this.presence);
+    if (keys.includes('userControls')) saveItem('sugora_chat_user_controls', this.userControls);
+    if (keys.includes('settings')) saveItem('sugora_chat_settings', this.settings);
+    if (keys.includes('privacySettings')) saveItem('sugora_chat_privacy_settings', this.privacySettings);
+    if (keys.includes('reports')) saveItem('sugora_chat_reports', this.reports);
   }
 
   public subscribe(listener: () => void): () => void {
@@ -467,7 +460,7 @@ class ChatStore {
           PROFILES.splice(0, PROFILES.length, ...profiles);
         }
       } else if (pErr) {
-        console.error('Failed to fetch profiles from Supabase during sync:', pErr);
+        console.warn('Failed to fetch profiles from Supabase during sync:', pErr?.message || pErr);
       }
 
       // Initialize presence list with current database values
@@ -492,7 +485,7 @@ class ChatStore {
       // 2. Fetch all conversations, seeding if empty
       let { data: convs, error: cErr } = await client.from('conversations').select('*');
       if (cErr) {
-        console.error('Failed to fetch conversations from Supabase during sync:', cErr);
+        console.warn('Failed to fetch conversations from Supabase during sync:', cErr?.message || cErr);
       }
 
       if (convs && !cErr && convs.length === 0) {
@@ -589,15 +582,18 @@ class ChatStore {
       if (parts && !partErr) {
         this.participants = parts;
       } else if (partErr) {
-        console.error('Failed to fetch participants during sync:', partErr);
+        console.warn('Failed to fetch participants during sync:', partErr.message || partErr);
       }
 
       // 4. Fetch messages
-      const { data: msgs, error: mErr } = await client.from('messages').select('*');
+      const { data: msgs, error: mErr } = await client.from('messages').select('*').limit(100);
       if (msgs && !mErr) {
-        this.messages = msgs;
+        // Merge with existing instead of overwriting to not lose local messages if we hit limits
+        const existingIds = new Set(this.messages.map(m => m.id));
+        const newMsgs = msgs.filter(m => !existingIds.has(m.id));
+        this.messages = [...this.messages, ...newMsgs];
       } else if (mErr) {
-        console.error('Failed to fetch messages during sync:', mErr);
+        console.warn('Failed to fetch messages during sync (might not exist yet):', mErr.message || mErr);
       }
 
       // Save to local storage for offline resiliency
@@ -867,6 +863,56 @@ class ChatStore {
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   }
 
+  
+  public createGroup(groupData: Conversation, participants: Participant[]) {
+    this.conversations.push(groupData);
+    this.participants.push(...participants);
+
+    this.saveToStorage(['conversations', 'participants']);
+    this.notifyListeners();
+
+    const client = getRealSupabaseClient();
+    if (client) {
+      const insertPromise = client.from('conversations').insert({
+        id: groupData.id,
+        type: groupData.type,
+        title: groupData.title,
+        avatar: groupData.avatar,
+        created_at: groupData.created_at,
+        updated_at: groupData.updated_at,
+        pinned_by: groupData.pinned_by,
+        archived_by: groupData.archived_by,
+        muted_by: groupData.muted_by
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Supabase conv insert error (Group):', error);
+          throw error;
+        }
+      });
+
+      this.pendingConvInserts.set(groupData.id, insertPromise);
+
+      insertPromise.then(() => {
+        const strippedParticipants = participants.map(p => ({
+          conversation_id: p.conversation_id,
+          user_id: p.user_id,
+          joined_at: p.joined_at
+        }));
+        
+        client.from('participants').insert(strippedParticipants).then(({ error }) => {
+          if (error) console.error('Supabase participants insert error (Group):', error);
+          else console.log('Group created in Supabase');
+        });
+      });
+
+      setTimeout(() => {
+        if (this.pendingConvInserts.get(groupData.id) === insertPromise) {
+          this.pendingConvInserts.delete(groupData.id);
+        }
+      }, 5000);
+    }
+  }
+
   public startConversation(creatorId: string, otherId: string, type: 'one-to-one' | 'support' = 'one-to-one'): Conversation {
     // Check if conversation already exists
     const existing = this.conversations.find(c => {
@@ -1005,7 +1051,7 @@ class ChatStore {
           starred_by: newMessage.starred_by || [],
           reactions: newMessage.reactions || {}
         }).then(({ error }) => {
-          if (error) console.error('Supabase message insert error:', error);
+          if (error) console.error('Supabase message insert error:', JSON.stringify(error));
         });
 
         client.from('conversations')

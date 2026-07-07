@@ -1,5 +1,12 @@
 const fs = require('fs');
-
 let content = fs.readFileSync('src/components/ChatPlaceholder.tsx', 'utf8');
-content = content.replace("                  </div>hatSettings } from '../lib/chatStore';", "                  </div>\n                )}\n              </div>\n            )}");
+
+const errorPart = `          ) : (
+              {/* Search bar and Filters header */}`;
+
+const fixedPart = `          ) : (
+            <>
+              {/* Search bar and Filters header */}`;
+
+content = content.replace(errorPart, fixedPart);
 fs.writeFileSync('src/components/ChatPlaceholder.tsx', content);
