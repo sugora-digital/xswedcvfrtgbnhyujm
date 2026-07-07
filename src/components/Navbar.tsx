@@ -16,8 +16,21 @@ export default function Navbar({ currentUser, userRole }: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
 
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   useEffect(() => {
     const handleScroll = () => {
+
       setScrolled(window.scrollY > 10);
     };
     window.addEventListener('scroll', handleScroll);
@@ -245,15 +258,26 @@ export default function Navbar({ currentUser, userRole }: NavbarProps) {
 
       </div>
 
+
       {/* Mobile Drawer Overlay */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-neutral-200/50 dark:border-neutral-800/50 bg-white dark:bg-neutral-950 overflow-hidden"
-          >
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: '-100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '-100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              className="fixed top-[72px] left-0 right-0 border-b border-neutral-200/50 dark:border-neutral-800/50 bg-white dark:bg-neutral-950 overflow-hidden z-50 md:hidden"
+            >
+
             <div className="space-y-1 px-4 py-4">
               {navLinks.map((link) => (
                 <button
@@ -344,6 +368,7 @@ export default function Navbar({ currentUser, userRole }: NavbarProps) {
               </div>
             </div>
           </motion.div>
+          </>
         )}
       </AnimatePresence>
     </header>

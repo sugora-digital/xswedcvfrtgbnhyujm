@@ -112,3 +112,16 @@ body {
   0% { transform: translate(-30%, -30%) rotate(45deg); }
   100% { transform: translate(30%, 30%) rotate(45deg); }
 }
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right);
+}

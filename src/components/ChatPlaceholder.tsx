@@ -13,7 +13,7 @@ import { NewGroupPanel } from './chat/panels/NewGroupPanel';
 import { ArchivedPanel } from './chat/panels/ArchivedPanel';
 import { StarredPanel } from './chat/panels/StarredPanel';
 import { SettingsPanel } from './chat/panels/SettingsPanel';
-import { LogOut, ShieldCheck, MessageSquare, Users, Settings, Hash, Send, Bell, Search, Sun, Moon, Monitor, ArrowLeft, Code, Sparkles, Check, CheckCheck, Heart, User, Pin, Archive, VolumeX, Trash2, Edit2, Reply, CornerUpRight, Copy, Paperclip, Image as ImageIcon, FileText, Film, Music, Mic, Smile, X, Info, ChevronLeft, ChevronRight, Star, AlertTriangle, ShieldAlert, CheckSquare, Square, Download, Share2, Phone, Video, MoreVertical, BadgeCheck, Camera, Edit3, Plus, SlidersHorizontal } from 'lucide-react';
+import { LogOut, ShieldCheck, MessageSquare, Users, Settings, Hash, Send, Bell, Search, Sun, Moon, Monitor, ArrowLeft, Code, Sparkles, Check, CheckCheck, Heart, User, Pin, Archive, VolumeX, Trash2, Edit2, Reply, CornerUpRight, Copy, Paperclip, Image as ImageIcon, FileText, Film, Music, Mic, Smile, X, Info, ChevronLeft, ArrowDown, ChevronRight, Star, AlertTriangle, ShieldAlert, CheckSquare, Square, Download, Share2, Phone, Video, MoreVertical, BadgeCheck, Camera, Edit3, Plus, SlidersHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { callingStore } from '../lib/callingStore';
 
@@ -168,6 +168,8 @@ export default function ChatPlaceholder() {
   const [reportDetails, setReportDetails] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -320,10 +322,38 @@ export default function ChatPlaceholder() {
     return () => unsubscribe();
   }, [currentUser, activeConv?.id]);
 
-  // Keep scrolled to bottom
+
+  // Force scroll to bottom when switching conversations
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    setShowScrollButton(false);
+  }, [activeConv?.id]);
+
+  // Handle Intelligent Auto-Scroll
+
+  useEffect(() => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    
+    // Check if we are near the bottom (within 150px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    
+    if (isNearBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShowScrollButton(false);
+    } else {
+      setShowScrollButton(true);
+    }
   }, [messages, typingUsers]);
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const container = scrollContainerRef.current;
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+    if (isNearBottom) {
+      setShowScrollButton(false);
+    }
+  };
 
   // Handle typing debounce
   useEffect(() => {
@@ -634,6 +664,7 @@ export default function ChatPlaceholder() {
       setShowEmojiPicker(false);
       chatStore.setTyping(activeConv.id, currentUser.id, false);
       textInputRef.current?.focus();
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (err: any) {
       alert(err.message || 'Failed to send message.');
     }
@@ -813,7 +844,7 @@ export default function ChatPlaceholder() {
 
   return (
     <div 
-      className="h-screen bg-[#F8FAFC] dark:bg-[#09090B] text-slate-900 dark:text-neutral-50 flex flex-col md:flex-row transition-colors duration-300 select-none overflow-hidden"
+      className="h-[100dvh] w-full bg-[#F8FAFC] dark:bg-[#09090B] text-slate-900 dark:text-neutral-50 flex flex-col md:flex-row transition-colors duration-300 select-none overflow-hidden"
       onDragEnter={handleDrag}
       onDragOver={handleDrag}
       onDragLeave={handleDrag}
@@ -1479,7 +1510,11 @@ export default function ChatPlaceholder() {
               </div>
 
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin relative bg-white dark:bg-[#09090B]">
+              <div 
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scrollbar-thin relative bg-white dark:bg-[#09090B]"
+              >
                 {/* E2E Banner */}
                 <div className="flex justify-center mb-6">
                   <div className="bg-[#10B981]/10 border border-[#10B981]/20 rounded-[20px] p-4 max-w-sm w-full text-center space-y-2">
@@ -1615,7 +1650,7 @@ export default function ChatPlaceholder() {
 
                               {/* Text content */}
                               {msg.text && (
-                                <p className="text-[15px] leading-relaxed font-sans whitespace-pre-wrap">
+                                <p className="text-[15px] leading-relaxed font-sans whitespace-pre-wrap break-words">
                                   {msg.text}
                                 </p>
                               )}
@@ -1644,8 +1679,51 @@ export default function ChatPlaceholder() {
                 )}
               </div>
 
+                {/* Typing Indicator */}
+                <AnimatePresence>
+                  {typingUsers.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="flex gap-3 justify-start items-end"
+                    >
+                      <div className="w-8 shrink-0 pb-1">
+                        <div className="h-8 w-8 rounded-full bg-neutral-100 dark:bg-zinc-800 animate-pulse flex items-center justify-center">
+                          <span className="text-[10px]">💬</span>
+                        </div>
+                      </div>
+                      <div className="px-4 py-2.5 bg-neutral-100 dark:bg-zinc-900 text-neutral-500 dark:text-zinc-400 rounded-[20px] rounded-bl-[4px] shadow-sm text-[13px] font-medium flex items-center gap-1.5 w-fit">
+                        <span className="flex gap-1">
+                          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1.5 h-1.5 bg-neutral-400 dark:bg-zinc-500 rounded-full inline-block" />
+                          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} className="w-1.5 h-1.5 bg-neutral-400 dark:bg-zinc-500 rounded-full inline-block" />
+                          <motion.span animate={{ y: [0, -4, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} className="w-1.5 h-1.5 bg-neutral-400 dark:bg-zinc-500 rounded-full inline-block" />
+                        </span>
+                        <span>typing...</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div ref={messagesEndRef} className="h-1 w-full" />
+                
+                {/* Scroll to bottom button */}
+                <AnimatePresence>
+                  {showScrollButton && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                      onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                      className="absolute bottom-6 right-6 h-10 w-10 bg-white dark:bg-zinc-800 shadow-[0_4px_15px_rgba(0,0,0,0.1)] rounded-full flex items-center justify-center text-[#6C4EFF] border border-neutral-100 dark:border-zinc-700 z-30 cursor-pointer"
+                    >
+                      <ArrowDown className="h-5 w-5" />
+                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 border-2 border-white dark:border-zinc-800 rounded-full" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               {/* Composer */}
-              <div className="px-3 sm:px-5 pb-safe pt-2 bg-transparent relative z-20 w-full mb-16 md:mb-0">
+              <div className="px-3 sm:px-5 pb-safe pt-2 bg-transparent relative z-20 w-full mb-2 md:mb-4">
                 <AnimatePresence>
                   {showAttachmentMenu && (
                     <motion.div 
@@ -1774,7 +1852,7 @@ export default function ChatPlaceholder() {
         </main>
         
         {/* Mobile Nav */}
-        <nav className={`md:hidden border-t border-neutral-200/50 dark:border-zinc-800/50 bg-white/90 dark:bg-[#09090B]/90 backdrop-blur-xl h-[64px] flex items-center justify-around pb-safe z-50 ${activeConv ? 'hidden' : 'flex'}`}>
+        <nav className={`md:hidden border-t border-neutral-200/50 dark:border-zinc-800/50 bg-white/90 dark:bg-[#09090B]/90 backdrop-blur-xl min-h-[64px] pt-2 pb-safe flex items-center justify-around z-50 ${activeConv ? 'hidden' : 'flex'}`}>
           {[
             { id: 'chats', icon: MessageSquare, label: 'Chats', badge: conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0) },
             { id: 'calls', icon: Phone, label: 'Calls' },
